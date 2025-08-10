@@ -6,78 +6,26 @@
       "use": "@vercel/static"
     },
     {
-      "src": "src/**/*",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.html",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.js",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "*.xml",
-      "use": "@vercel/static"
-    },
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/metaboost.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/metaboost-viewer.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/metaboost-dashboard.js",
+      "src": "api/**/*",
       "use": "@vercel/node"
     }
   ],
   "rewrites": [
     {
-      "source": "/favicon.ico",
-      "destination": "/favicon.png"
-    },
-    {
       "source": "/api/metaboost",
       "destination": "/api/metaboost.js"
-    },
-    {
-      "source": "/api/metaboost-viewer",
-      "destination": "/api/metaboost-viewer.js"
-    },
-    {
-      "source": "/api/metaboost-dashboard",
-      "destination": "/api/metaboost-dashboard.js"
     },
     {
       "source": "/metaboost-dashboard.html",
       "destination": "/api/metaboost-dashboard.js"
     },
     {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
-    {
-      "source": "/src/(.*)",
-      "destination": "/src/$1"
-    },
-    {
       "source": "/",
-      "destination": "/v4v_lightning_tester.html"
-    },
-    {
-      "source": "/index",
-      "destination": "/v4v_lightning_tester.html"
+      "destination": "/public/v4v_lightning_tester.html"
     },
     {
       "source": "/index.html",
-      "destination": "/v4v_lightning_tester.html"
+      "destination": "/public/v4v_lightning_tester.html"
     },
     {
       "source": "/(.*)",
