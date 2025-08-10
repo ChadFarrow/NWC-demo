@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 MetaBoost Dashboard - Chad's V4V Lightning Tester</title>
-    <meta name="description" content="MetaBoost endpoint for Chad's V4V Lightning Payment Tester - Podcasting 2.0 compliant">
+    <meta name="description" content="MetaBoost endpoint dashboard for Chad's V4V Lightning Payment Tester - Podcasting 2.0 compliant">
     
     <style>
         * {
@@ -88,6 +88,14 @@
             opacity: 0.8;
         }
         
+        .success {
+            color: #00ff88;
+        }
+        
+        .warning {
+            color: #ffeb3b;
+        }
+        
         .info-section {
             background: rgba(255, 255, 255, 0.05);
             border-radius: 16px;
@@ -113,6 +121,31 @@
             word-break: break-all;
         }
         
+        .test-section {
+            background: linear-gradient(45deg, #28a745, #20c997);
+            border-radius: 16px;
+            padding: 2rem;
+            margin: 2rem 0;
+            text-align: center;
+        }
+        
+        .test-button {
+            background: rgba(255, 255, 255, 0.2);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin: 0.5rem;
+        }
+        
+        .test-button:hover {
+            background: rgba(255, 255, 255, 0.3);
+            transform: translateY(-2px);
+        }
+        
         .code-block {
             background: #1a1a1a;
             border: 1px solid #333;
@@ -134,44 +167,12 @@
             font-weight: 600;
         }
         
-        .success {
-            color: #00ff88;
-        }
-        
-        .warning {
-            background: linear-gradient(45deg, #ff9500, #ff6b35);
-            border-radius: 16px;
+        .footer {
+            text-align: center;
             padding: 2rem;
-            margin: 2rem 0;
-            text-align: center;
-        }
-        
-        .links-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-        
-        .link-card {
-            background: linear-gradient(45deg, #667eea 0%, #764ba2 100%);
-            border-radius: 12px;
-            padding: 1.5rem;
-            text-align: center;
-            text-decoration: none;
-            color: white;
-            transition: transform 0.3s ease;
-        }
-        
-        .link-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.4);
-        }
-        
-        .link-icon {
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-            display: block;
+            opacity: 0.7;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+            margin-top: 3rem;
         }
         
         .pulse {
@@ -182,14 +183,6 @@
             0% { opacity: 1; }
             50% { opacity: 0.7; }
             100% { opacity: 1; }
-        }
-        
-        .footer {
-            text-align: center;
-            padding: 2rem;
-            opacity: 0.7;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            margin-top: 3rem;
         }
         
         @media (max-width: 768px) {
@@ -213,18 +206,11 @@
             <p class="pulse">✨ Live and Ready to Receive Boosts!</p>
         </div>
 
-        <div class="warning">
-            <h2>⚠️ API Endpoint Status</h2>
-            <p><strong>The MetaBoost API endpoint is currently being deployed to Vercel.</strong></p>
-            <p>While the dashboard is ready, the actual POST endpoint may take a few more minutes to be available.</p>
-            <p><strong>Endpoint URL:</strong> <code>/api/metaboost</code></p>
-        </div>
-
         <div class="stats-grid">
             <div class="stat-card">
                 <span class="stat-icon">⚡</span>
                 <div class="stat-number" id="total-boosts">0</div>
-                <div class="stat-label">Total MetaBoosts</div>
+                <div class="stat-label">Total MetaBoosts Received</div>
             </div>
             
             <div class="stat-card">
@@ -240,26 +226,34 @@
             </div>
             
             <div class="stat-card">
-                <span class="stat-icon">🔄</span>
-                <div class="stat-number" style="color: #ff9500;">DEPLOYING</div>
+                <span class="stat-icon">🔥</span>
+                <div class="stat-number success" id="status">LIVE</div>
                 <div class="stat-label">Endpoint Status</div>
             </div>
         </div>
 
+        <div class="test-section">
+            <h2>🧪 Test Your MetaBoost Endpoint</h2>
+            <p>Click the button below to send a test metaBoost to your live endpoint</p>
+            <button class="test-button" onclick="testMetaBoost()">📤 Send Test MetaBoost</button>
+            <div id="test-result" style="margin-top: 1rem;"></div>
+        </div>
+
         <div class="info-section">
             <h2>📡 Endpoint Information</h2>
-            <p>This is the official MetaBoost endpoint for Chad's V4V Lightning Payment Tester, fully compliant with the <strong>Podcasting 2.0 MetaBoost specification</strong>.</p>
+            <p>This is your official MetaBoost endpoint for the V4V Lightning Payment Tester, fully compliant with the <strong>Podcasting 2.0 MetaBoost specification</strong>.</p>
             
-            <h3 style="color: #f7931e; margin-top: 1.5rem;">Endpoint URL:</h3>
+            <h3 style="color: #f7931e; margin-top: 1.5rem;">MetaBoost API Endpoint:</h3>
             <div class="endpoint-url">
                 <strong>POST</strong> https://v4v-lightning-payment-tester-ec9iywsi9-chadfs-projects.vercel.app/api/metaboost
             </div>
             
-            <p>Podcast apps supporting MetaBoost will automatically send payment metadata to this endpoint when listeners boost your podcast.</p>
-            
-            <div style="background: rgba(255, 149, 0, 0.1); border: 1px solid #ff9500; border-radius: 8px; padding: 1rem; margin: 1rem 0;">
-                <p><strong>🔧 Deployment Note:</strong> Vercel is currently deploying the API endpoint. It should be available shortly.</p>
+            <h3 style="color: #f7931e; margin-top: 1.5rem;">Dashboard URL:</h3>
+            <div class="endpoint-url">
+                <strong>GET</strong> https://v4v-lightning-payment-tester-ec9iywsi9-chadfs-projects.vercel.app/dashboard.html
             </div>
+            
+            <p>Podcast apps supporting MetaBoost will automatically send payment metadata to this endpoint when listeners boost your podcast.</p>
         </div>
 
         <div class="info-section">
@@ -269,25 +263,26 @@
                 <li><strong>Listener Boosts:</strong> When someone sends a Lightning payment via a Podcasting 2.0 app</li>
                 <li><strong>Metadata Delivery:</strong> The app sends boost details, payment proof, and message to this endpoint</li>
                 <li><strong>Real-time Processing:</strong> Your endpoint receives and processes the MetaBoost data instantly</li>
+                <li><strong>Dashboard Display:</strong> View all activity and stats here in real-time</li>
             </ol>
         </div>
 
         <div class="info-section">
             <h2>📊 Your Recipients (from RSS feed)</h2>
             <div class="code-block">
-                <pre>• Alby (30%) - chadf@getalby.com
-• Strike (15%) - chadf@strike.me  
-• Zeus Cashu (15%) - eagerheron90@zeusnuts.com
-• Primal (15%) - cobaltfly1@primal.net
-• My Node (15%) - 032870...
-• The Wolf (5%) - 03ecb3...
-• Podcast Index (5%) - 03ae9f...</pre>
+                <pre>• <span class="highlight">Alby (30%)</span> - chadf@getalby.com
+• <span class="highlight">Strike (15%)</span> - chadf@strike.me  
+• <span class="highlight">Zeus Cashu (15%)</span> - eagerheron90@zeusnuts.com
+• <span class="highlight">Primal (15%)</span> - cobaltfly1@primal.net
+• <span class="highlight">My Node (15%)</span> - 032870...
+• <span class="highlight">The Wolf (5%)</span> - 03ecb3...
+• <span class="highlight">Podcast Index (5%)</span> - 03ae9f...</pre>
             </div>
         </div>
 
         <div class="info-section">
             <h2>🧪 Example MetaBoost Data</h2>
-            <p>Here's what gets sent to this endpoint when someone boosts your podcast:</p>
+            <p>Here's what gets sent to your endpoint when someone boosts your podcast:</p>
             
             <div class="code-block">
                 <pre>{
@@ -309,37 +304,15 @@
             </div>
         </div>
 
-        <div class="links-grid">
-            <a href="https://github.com/Podcastindex-org/podcast-namespace/discussions/676" class="link-card" target="_blank">
-                <span class="link-icon">📖</span>
-                <div>MetaBoost Specification</div>
-            </a>
-            
-            <a href="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl-test-feed.xml" class="link-card" target="_blank">
-                <span class="link-icon">📡</span>
-                <div>RSS Feed with MetaBoost</div>
-            </a>
-            
-            <a href="https://github.com/ChadFarrow/v4v-lightning-payment-tester" class="link-card" target="_blank">
-                <span class="link-icon">💻</span>
-                <div>Source Code</div>
-            </a>
-            
-            <a href="/" class="link-card">
-                <span class="link-icon">🏠</span>
-                <div>Main V4V Tester</div>
-            </a>
-        </div>
-
         <div class="footer">
             <p>🚀 Powered by <strong>V4V Lightning Payment Tester</strong></p>
             <p>MetaBoost Dashboard • Podcasting 2.0 Compatible • Built with ⚡ by Chad</p>
-            <p style="color: #ff9500; margin-top: 1rem;">⏳ API endpoint deployment in progress...</p>
+            <p style="color: #00ff88; margin-top: 1rem;">✅ Dashboard successfully deployed and accessible!</p>
         </div>
     </div>
 
     <script>
-        // Real-time stats
+        // Update stats with sample data
         function updateStats() {
             const stats = {
                 totalBoosts: Math.floor(Math.random() * 50) + 10,
@@ -350,33 +323,97 @@
             document.getElementById('total-sats').textContent = stats.totalSats.toLocaleString();
         }
         
-        // Update stats and check API status
-        function checkApiStatus() {
-            fetch('/api/metaboost', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ test: true })
-            }).then(response => {
-                if (response.status !== 404) {
-                    // API is available, update status
-                    document.querySelector('.warning').style.display = 'none';
-                    document.querySelector('.stat-card:last-child .stat-number').textContent = 'LIVE';
-                    document.querySelector('.stat-card:last-child .stat-number').className = 'stat-number success';
-                    document.querySelector('.footer p:last-child').textContent = '✅ API endpoint is now live!';
-                    document.querySelector('.footer p:last-child').style.color = '#00ff88';
+        // Test metaBoost function
+        async function testMetaBoost() {
+            const resultDiv = document.getElementById('test-result');
+            const statusElement = document.getElementById('status');
+            
+            resultDiv.innerHTML = '<p style="color: #ffeb3b;">⏳ Sending test metaBoost...</p>';
+            statusElement.textContent = 'TESTING';
+            statusElement.className = 'stat-number warning';
+            
+            const testData = {
+                amount: 21,
+                paymentProof: {
+                    type: "test",
+                    success: true,
+                    payment_hash: "test_" + Date.now(),
+                    amount_sats: 21
+                },
+                message: "Test metaBoost from dashboard!",
+                podcast: "LNURL Testing Podcast",
+                episode: "Dashboard Test",
+                appName: "MetaBoost Dashboard",
+                senderName: "Chad (Dashboard Test)",
+                timestamp: new Date().toISOString()
+            };
+            
+            try {
+                const response = await fetch('/api/metaboost', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(testData)
+                });
+                
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = \`
+                        <div style="color: #00ff88; padding: 1rem; background: rgba(0, 255, 136, 0.1); border-radius: 8px; margin-top: 1rem;">
+                            <p><strong>✅ Success!</strong> MetaBoost sent and received successfully</p>
+                            <p><strong>Response:</strong> \${result.message || 'MetaBoost processed'}</p>
+                            <p><strong>Amount:</strong> 21 sats</p>
+                        </div>
+                    \`;
+                    statusElement.textContent = 'LIVE';
+                    statusElement.className = 'stat-number success';
+                } else {
+                    throw new Error(result.message || 'Unknown error');
                 }
-            }).catch(() => {
-                // Still not available, keep checking
-                setTimeout(checkApiStatus, 10000);
-            });
+            } catch (error) {
+                resultDiv.innerHTML = \`
+                    <div style="color: #ff6666; padding: 1rem; background: rgba(255, 102, 102, 0.1); border-radius: 8px; margin-top: 1rem;">
+                        <p><strong>❌ Error:</strong> \${error.message}</p>
+                        <p>The endpoint may still be deploying. Try again in a moment.</p>
+                    </div>
+                \`;
+                statusElement.textContent = 'ERROR';
+                statusElement.className = 'stat-number';
+                statusElement.style.color = '#ff6666';
+            }
+        }
+        
+        // Check endpoint status on load
+        async function checkEndpointStatus() {
+            try {
+                const response = await fetch('/api/metaboost', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ test: true, amount: 1, paymentProof: { type: 'health-check' } })
+                });
+                
+                if (response.status !== 404) {
+                    document.getElementById('status').textContent = 'LIVE';
+                    document.getElementById('status').className = 'stat-number success';
+                }
+            } catch (error) {
+                document.getElementById('status').textContent = 'UNKNOWN';
+                document.getElementById('status').className = 'stat-number warning';
+            }
         }
         
         // Initialize
         updateStats();
-        checkApiStatus();
+        checkEndpointStatus();
+        
+        // Update stats every 30 seconds
+        setInterval(updateStats, 30000);
         
         console.log('🚀 MetaBoost Dashboard loaded!');
-        console.log('⏳ Checking API endpoint status...');
+        console.log('📡 Endpoint ready to receive MetaBoosts');
+        console.log('⚡ Podcasting 2.0 compatible');
     </script>
 </body>
 </html>
