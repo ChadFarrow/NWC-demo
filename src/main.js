@@ -21,21 +21,17 @@ function tryLoadNostrTools() {
     script.onload = function() {
         console.log(`nostr-tools loaded from ${nostrToolsSources[currentSourceIndex]}`);
         
-        // Check if it's available on window.nostr or window.NostrTools
-        if (window.nostr) {
-            setupNostrTools(window.nostr);
-        } else if (window.NostrTools) {
-            setupNostrTools(window.NostrTools);
+        // FORCE LOCAL NOSTR-TOOLS ONLY - Skip browser extension detection
+        console.log('🔒 FORCING LOCAL NOSTR-TOOLS ONLY - Browser extensions disabled');
+        
+        // Try to find it in the global scope (local nostr-tools)
+        const globalNostr = window.nostr_tools_exports || window.nostrTools;
+        if (globalNostr) {
+            setupNostrTools(globalNostr);
         } else {
-            // Try to find it in the global scope
-            const globalNostr = window.nostr_tools_exports || window.nostrTools;
-            if (globalNostr) {
-                setupNostrTools(globalNostr);
-            } else {
-                console.error('nostr-tools loaded but not found in global scope');
-                currentSourceIndex++;
-                tryLoadNostrTools();
-            }
+            console.error('Local nostr-tools not found in global scope');
+            currentSourceIndex++;
+            tryLoadNostrTools();
         }
     };
     

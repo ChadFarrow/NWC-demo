@@ -378,6 +378,13 @@ body {
     box-shadow: 0 8px 32px rgba(0, 102, 204, 0.1);
 }
 
+.cache-status-card .card-subtitle {
+    font-size: 0.85em;
+    opacity: 0.9;
+    margin-top: 0.25rem;
+    font-weight: 400;
+}
+
 .cache-controls {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
