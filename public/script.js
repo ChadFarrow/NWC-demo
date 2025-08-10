@@ -1535,6 +1535,10 @@ async function testWalletCapabilities(nwcString) {
         // Encrypt request
         const encrypted = await window.nostrTools.nip04.encrypt(secret, pubkey, reqJson);
         
+        if (!encrypted) {
+            throw new Error('Failed to encrypt NWC request - check your NWC string');
+        }
+        
         // Build Nostr event
         const clientPubkey = await window.nostrTools.getPublicKey(secret);
         console.log('Client pubkey:', clientPubkey);
@@ -1552,7 +1556,7 @@ async function testWalletCapabilities(nwcString) {
             pubkey: event.pubkey,
             created_at: event.created_at,
             tags: event.tags,
-            contentLength: event.content.length
+            contentLength: event.content ? event.content.length : 0
         });
         
         const finalized = window.nostrTools.finalizeEvent(event, secret);
@@ -1624,20 +1628,35 @@ async function testWalletCapabilities(nwcString) {
                             
                             if (ev.tags.some(t => t[0] === 'e' && t[1] === event.id)) {
                                 console.log('✅ Found matching response event, decrypting...');
-                                const decrypted = await window.nostrTools.nip04.decrypt(secret, pubkey, ev.content);
-                                console.log('✅ get_info response decrypted:', decrypted);
-                                const response = JSON.parse(decrypted);
                                 
-                                clearTimeout(timeoutId);
-                                if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                                ws.close();
+                                if (!ev.content) {
+                                    console.error('❌ Response event has no content');
+                                    reject(new Error('Response event has no content'));
+                                    return;
+                                }
                                 
-                                if (response.result) {
-                                    console.log('🎉 Wallet capabilities received:', response.result);
-                                    resolve(response.result);
-                                } else {
-                                    console.log('❌ get_info error:', response.error);
-                                    reject(new Error(response.error || 'get_info failed'));
+                                try {
+                                    const decrypted = await window.nostrTools.nip04.decrypt(secret, pubkey, ev.content);
+                                    console.log('✅ get_info response decrypted:', decrypted);
+                                    const response = JSON.parse(decrypted);
+                                    
+                                    clearTimeout(timeoutId);
+                                    if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
+                                    ws.close();
+                                    
+                                    if (response.result) {
+                                        console.log('🎉 Wallet capabilities received:', response.result);
+                                        resolve(response.result);
+                                    } else {
+                                        console.log('❌ get_info error:', response.error);
+                                        reject(new Error(response.error || 'get_info failed'));
+                                    }
+                                } catch (decryptError) {
+                                    console.error('❌ Failed to decrypt response:', decryptError);
+                                    clearTimeout(timeoutId);
+                                    if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
+                                    ws.close();
+                                    reject(new Error('Failed to decrypt wallet response'));
                                 }
                             } else {
                                 console.log('⚠️ Event does not match our request ID');
@@ -2148,7 +2167,7 @@ window.debugNWCConnection = async function debugNWCConnection() {
 };
 
 // Standalone wallet capabilities test function
-window.testWalletCapabilitiesStandalone = async function testWalletCapabilitiesStandalone() {
+window.testWalletCapabilitiesStandalone = async function() {
     const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
     const nwcString = nwcInput.value.trim();
     
