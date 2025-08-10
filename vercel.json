@@ -8,5 +8,8 @@
     { "source": "/", "destination": "/public/v4v_lightning_tester.html" },
     { "source": "/dashboard.html", "destination": "/public/dashboard.html" },
     { "source": "/dashboard", "destination": "/public/dashboard.html" }
-  ]
+  ],
+  "engines": {
+    "node": "18.x"
+  }
 }
