@@ -2725,6 +2725,10 @@ async function sendMetaBoostMetadata(event) {
         // Show success
         setButtonFeedback(submitBtn, '✅ Sent Successfully!', 3000, originalText);
         
+        console.log('📤 MetaBoost sent successfully, displaying result...');
+        console.log('📊 API Result:', result);
+        console.log('📊 Sent Data:', metaBoostData);
+        
         // Display the result
         displayMetaBoostResult(result, metaBoostData);
         
@@ -2739,7 +2743,15 @@ async function sendMetaBoostMetadata(event) {
 
 // Display metaBoost result
 function displayMetaBoostResult(result, sentData) {
+    console.log('📊 Displaying metaBoost result:', { result, sentData });
+    
     const container = document.getElementById('payment-form-container');
+    if (!container) {
+        console.error('❌ Could not find payment-form-container element');
+        return;
+    }
+    
+    console.log('✅ Found payment-form-container, proceeding with display');
     
     // Store boost in localStorage for persistence
     let storedBoosts = [];
