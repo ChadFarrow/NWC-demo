@@ -665,6 +665,7 @@
                     type: block.type,
                     guid: block.guid
                 })));
+                console.log('📋 Full value block data:', JSON.stringify(valueBlocks, null, 2));
                 
                 // Update UI
                 updateValueBlockDisplay(valueBlocks);
@@ -756,6 +757,9 @@
             
             const html = `
                 <h3>📡 Parsed Value Blocks (${valueBlocks.length})</h3>
+                <div class="success-message" style="background: #d4edda; color: #155724; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #c3e6cb;">
+                    ✅ Successfully parsed ${valueBlocks.length} value block${valueBlocks.length !== 1 ? 's' : ''} from RSS feed!
+                </div>
                 <div class="value-blocks-list">
                     ${valueBlocks.map((block, index) => `
                         <div class="value-block-item">
@@ -776,6 +780,9 @@
             console.log('🎨 Setting container HTML:', html.substring(0, 100) + '...');
             container.innerHTML = html;
             console.log('✅ Value block display updated successfully');
+            
+            // Scroll to the new content
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function clearSettings() {
