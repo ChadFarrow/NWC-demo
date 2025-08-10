@@ -99,7 +99,20 @@
                         <label class="form-label">Payment Proof (preimage, invoice, etc.)</label>
                         <input type="text" class="form-input" id="payment-proof" required placeholder="Paste payment proof here">
                     </div>
-                    <button class="btn btn-primary" type="button" onclick="handleMetaBoostSubmit(event)">Send metaBoost Metadata</button>
+                    <button class="btn btn-primary" type="button" onclick="
+                        console.log('🚀 Inline button clicked!');
+                        event.preventDefault();
+                        const form = document.getElementById('real-payment-form');
+                        const syntheticEvent = { target: form, preventDefault: () => {}, stopPropagation: () => {} };
+                        if (typeof window.sendMetaBoostMetadata === 'function') {
+                            console.log('📤 Calling sendMetaBoostMetadata...');
+                            window.sendMetaBoostMetadata(syntheticEvent);
+                        } else {
+                            console.error('❌ sendMetaBoostMetadata not found!');
+                            alert('Function not found - check console');
+                        }
+                        return false;
+                    ">Send metaBoost Metadata</button>
                 </form>
                 <button class="btn btn-secondary" style="margin-top:1rem; width:100%;" onclick="sendNormalBoost()">Send Boost</button>
                 <div style="margin-top: 1rem; font-size: 0.95em; color: #aaa;">
