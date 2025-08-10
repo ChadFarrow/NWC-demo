@@ -44,6 +44,18 @@
       "destination": "/src/$1"
     },
     {
+      "source": "/",
+      "destination": "/v4v_lightning_tester.html"
+    },
+    {
+      "source": "/index",
+      "destination": "/v4v_lightning_tester.html"
+    },
+    {
+      "source": "/index.html",
+      "destination": "/v4v_lightning_tester.html"
+    },
+    {
       "source": "/(.*)",
       "destination": "/public/$1"
     }
