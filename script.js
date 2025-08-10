@@ -2133,9 +2133,15 @@ window.sendNormalBoost = async function sendNormalBoost() {
                     results.push({ recipient, amount: recipientAmount, success: false, error: result.error });
                 }
             } else if (isNodePubkey) {
-                console.log('⚠️ Node pubkey detected - keysend not supported by most NWC wallets');
-                alert(`⚠️ Node pubkey detected: ${recipient}\n\nMost NWC wallets don't support keysend payments. This recipient will be skipped.\n\nConsider using Lightning addresses instead.`);
-                results.push({ recipient, amount: recipientAmount, success: false, error: 'Keysend not supported by most NWC wallets' });
+                console.log('🔑 Node pubkey detected - using keysend payment...');
+                const keysendResult = await sendKeysendWithNWC(nwcString, recipient, recipientAmount, message);
+                if (keysendResult.success) {
+                    console.log('✅ Keysend payment successful! Preimage:', keysendResult.preimage);
+                    results.push({ recipient, amount: recipientAmount, success: true });
+                } else {
+                    console.log('❌ Keysend payment failed:', keysendResult.error);
+                    results.push({ recipient, amount: recipientAmount, success: false, error: keysendResult.error });
+                }
             } else {
                 console.log('⚠️ Invalid recipient format');
                 alert(`⚠️ Invalid recipient format: ${recipient}\n\nExpected a Lightning address (user@domain.com) or node pubkey.`);
@@ -2330,6 +2336,105 @@ async function payInvoiceWithNWC(nwcString, invoice) {
         return { success: false, error: error.message || 'Payment failed' };
     }
 }
+
+async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
+    const requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    console.log(`🔑 Sending keysend with NWC... (Request ID: ${requestId})`);
+    console.log(`Target: ${pubkey.substring(0, 16)}...`);
+    console.log(`Amount: ${amount} sats`);
+    
+    try {
+        // Use nwcjs if available
+        if (typeof nwcjs !== 'undefined') {
+            console.log('Using nwcjs for keysend payment...');
+            
+            // Get or create NWC info
+            let nwcInfo = nwcjs.nwc_infos.find(info => 
+                nwcString.includes(info.wallet_pubkey) && nwcString.includes(info.relay)
+            );
+            
+            if (!nwcInfo) {
+                nwcInfo = nwcjs.processNWCstring(nwcString);
+                console.log('Processed new NWC connection for keysend payment');
+            }
+            
+            // Create the keysend payment request manually
+            console.log('Sending keysend payment request...');
+            
+            const msg = {
+                method: "pay_keysend",
+                params: {
+                    destination: pubkey,
+                    amount: amount * 1000, // Convert sats to msat
+                    message: message || ''
+                }
+            };
+            const msgJson = JSON.stringify(msg);
+            const encrypted = await nwcjs.encrypt(nwcInfo.app_privkey, nwcInfo.wallet_pubkey, msgJson);
+            
+            const event = {
+                kind: 23194,
+                content: encrypted,
+                tags: [["p", nwcInfo.wallet_pubkey]],
+                created_at: Math.floor(Date.now() / 1000),
+                pubkey: nwcInfo.app_pubkey,
+            };
+            
+            const signedEvent = await nwcjs.getSignedEvent(event, nwcInfo.app_privkey);
+            console.log('Keysend event signed, sending to relay...');
+            
+            // Set up response listener
+            nwcjs.getResponse(nwcInfo, signedEvent.id, "pay_keysend", 15); // Keysend might take longer
+            await nwcjs.waitSomeSeconds(1);
+            
+            // Send the event
+            nwcjs.sendEvent(signedEvent, nwcInfo.relay);
+            console.log('Keysend request sent, waiting for response...');
+            
+            // Wait for response
+            const waitForResponse = async () => {
+                for (let i = 0; i < 15; i++) {  // Wait up to 15 seconds for keysend
+                    await nwcjs.waitSomeSeconds(1);
+                    if (nwcjs.response.length > 0) {
+                        // Look for our response
+                        for (let j = 0; j < nwcjs.response.length; j++) {
+                            const resp = nwcjs.response[j];
+                            if (resp.result_type === 'pay_keysend') {
+                                nwcjs.response.splice(j, 1);  // Remove it from the array
+                                return resp;
+                            }
+                        }
+                    }
+                }
+                throw new Error('Keysend timeout - no response received');
+            };
+            
+            const result = await waitForResponse();
+            console.log('Keysend result from nwcjs:', result);
+            
+            if (result && result.result) {
+                return {
+                    success: true,
+                    preimage: result.result.preimage || 'keysend_sent',
+                    result: result
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result?.error?.message || result?.error || 'Keysend payment failed'
+                };
+            }
+        }
+        
+        throw new Error('nwcjs library required for keysend payments');
+        
+    } catch (error) {
+        console.error('❌ NWC keysend payment failed:', error);
+        return { success: false, error: error.message || 'Keysend payment failed' };
+    }
+}
+
+// Internal relay test function (returns result instead of showing alert)
 async function testRelayConnectionInternal(relay) {
     return new Promise((resolve) => {
         console.log('Testing relay connection:', relay);
