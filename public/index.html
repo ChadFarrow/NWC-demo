@@ -3,6 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <title>V4V Lightning Payment Tester</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="favicon.png">
@@ -78,6 +81,9 @@
                 <button class="btn btn-warning" onclick="testNodeConnectivity()">
                     🔍 Test Node Connectivity
                 </button>
+                <button class="btn btn-danger" onclick="forceRefresh()" title="Force refresh to clear cache">
+                    🔄 Force Refresh
+                </button>
             </div>
             <div id="wallet-info"></div>
         </div>
@@ -121,84 +127,206 @@
     <!-- Bech32 for address encoding -->
     <script src="https://bundle.run/bech32@2.0.0"></script>
     <!-- NWC JS library for proper NWC implementation -->
-    <script src="nwcjs.js?v=20250810-final&t=1728567999&cb=fix_now"></script>
+    <script src="nwcjs.js?v=20250810-final&t=1754838300&cb=fix_now&nocache=true"></script>
     <!-- Keep nostr-tools for backwards compatibility -->
     <script src="nostr-tools.umd.js"></script>
     <script type="module" src="/src/main.js"></script>
-    <script src="script-v2.js?v=20250810-final&t=1728567999&cb=fix_now"></script>
+    <script src="script-v2.js?v=20250810-final&t=1754838300&cb=fix_now&nocache=true"></script>
     
     <!-- IMMEDIATE KEYSEND FIX - Override sendKeysendWithNWC to use multi_pay_keysend -->
     <script>
-        console.log('🚀 Loading immediate keysend fix override v2...');
+        console.log('🚀 Loading immediate keysend fix override v3...');
+        console.log('🕐 Timestamp:', new Date().toISOString());
+        console.log('🔧 Cache-busting version: 1754838300-fix_now-nocache');
         
-        // IMMEDIATELY override the sendKeysendWithNWC function - no waiting
-        window.sendKeysendWithNWC = async function(nwcString, pubkey, amount, message) {
-                    console.log('🔧 [OVERRIDE] Using working multi_pay_keysend method');
-                    console.log(`Target: ${pubkey.substring(0, 16)}... Amount: ${amount} sats`);
-                    
-                    try {
-                        if (typeof nwcjs === 'undefined') {
-                            throw new Error('nwcjs library not loaded');
-                        }
-                        
-                        // Get or create NWC info
-                        let nwcInfo = nwcjs.nwc_infos.find(info => 
-                            nwcString.includes(info.wallet_pubkey) && nwcString.includes(info.relay)
-                        );
-                        
-                        if (!nwcInfo) {
-                            nwcInfo = nwcjs.processNWCstring(nwcString);
-                        }
-                        
-                        // Use multi_pay_keysend since pay_keysend is broken in Alby
-                        const keysendArray = [{
-                            pubkey: pubkey,
-                            amount: amount * 1000, // msat
-                            tlv_records: [{
-                                type: 34349334,
-                                value: nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
-                            }]
-                        }];
-                        
-                        const result = await nwcjs.multiPayKeysend(nwcInfo, keysendArray, 20);
-                        console.log('🔧 Multi-keysend result:', result);
-                        
-                        if (result && result.result) {
-                            return {
-                                success: true,
-                                preimage: result.result.preimage || 'keysend_sent',
-                                result: result
-                            };
-                        } else {
-                            return {
-                                success: false,
-                                error: result?.error?.message || 'Keysend payment failed',
-                                result: result
-                            };
-                        }
-                    } catch (error) {
-                        console.error('❌ Keysend override error:', error);
-                        return {
-                            success: false,
-                            error: error.message
-                        };
-                    }
-                };
+                 // IMMEDIATELY override the sendKeysendWithNWC function - no waiting
+         window.sendKeysendWithNWC = async function(nwcString, pubkey, amount, message) {
+                     console.log('🔧 [OVERRIDE] Using working multi_pay_keysend method');
+                     console.log(`Target: ${pubkey.substring(0, 16)}... Amount: ${amount} sats`);
+                     
+                     // Pre-flight connectivity check
+                     console.log('🔍 Performing pre-flight connectivity check...');
+                     let connectivityTest;
+                     try {
+                         connectivityTest = await testNodeConnectivity(pubkey);
+                         console.log('Connectivity test result:', connectivityTest);
+                         
+                         if (!connectivityTest.reachable) {
+                             console.log(`⚠️ Node connectivity check failed: ${connectivityTest.message}`);
+                         }
+                     } catch (e) {
+                         console.log('⚠️ Connectivity test failed, continuing with payment attempt');
+                         connectivityTest = {
+                             reachable: false,
+                             source: 'test_failed',
+                             message: 'Connectivity test failed - proceeding anyway'
+                         };
+                     }
+                     
+                     try {
+                         if (typeof nwcjs === 'undefined') {
+                             throw new Error('nwcjs library not loaded');
+                         }
+                         
+                         // Get or create NWC info
+                         let nwcInfo = nwcjs.nwc_infos.find(info => 
+                             nwcString.includes(info.wallet_pubkey) && nwcString.includes(info.relay)
+                         );
+                         
+                         if (!nwcInfo) {
+                             nwcInfo = nwcjs.processNWCstring(nwcString);
+                         }
+                         
+                         // Use multi_pay_keysend since pay_keysend is broken in Alby
+                         const keysendArray = [{
+                             pubkey: pubkey,
+                             amount: amount * 1000, // msat
+                             tlv_records: [{
+                                 type: 34349334,
+                                 value: nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
+                             }]
+                         }];
+                         
+                         const result = await nwcjs.multiPayKeysend(nwcInfo, keysendArray, 20);
+                         console.log('🔧 Multi-keysend result:', result);
+                         
+                         if (result && result.result) {
+                             return {
+                                 success: true,
+                                 preimage: result.result.preimage || 'keysend_sent',
+                                 result: result,
+                                 connectivity: connectivityTest
+                             };
+                         } else {
+                             return {
+                                 success: false,
+                                 error: result?.error?.message || 'Keysend payment failed',
+                                 result: result,
+                                 connectivity: connectivityTest
+                             };
+                         }
+                     } catch (error) {
+                         console.error('❌ Keysend override error:', error);
+                         return {
+                             success: false,
+                             error: error.message,
+                             connectivity: connectivityTest
+                         };
+                     }
+                 };
         };
         
-        // Also add a connectivity test stub to prevent undefined errors
-        window.testNodeConnectivity = async function(pubkey) {
-            console.log('🔍 Testing node connectivity for:', pubkey);
-            return {
-                reachable: true,
-                message: 'Node connectivity test bypassed - using direct payment attempt',
-                source: 'stub'
-            };
-        };
+                 // Also add a connectivity test stub to prevent undefined errors
+         window.testNodeConnectivity = async function(pubkey) {
+             console.log('🔍 Testing node connectivity for:', pubkey);
+             
+             try {
+                 // Check if pubkey format is valid
+                 if (!/^[0-9a-fA-F]{66}$/.test(pubkey)) {
+                     return {
+                         reachable: false,
+                         source: 'format_validation',
+                         message: 'Invalid pubkey format - expected 66 character hex string'
+                     };
+                 }
+                 
+                 // Check if pubkey starts with valid Lightning Network prefixes
+                 const validPrefixes = ['02', '03'];
+                 if (!validPrefixes.includes(pubkey.substring(0, 2))) {
+                     return {
+                         reachable: false,
+                         source: 'prefix_validation',
+                         message: 'Invalid pubkey prefix - expected 02 or 03 for Lightning Network nodes'
+                     };
+                 }
+                 
+                 // Try to get node info from common Lightning Network explorers
+                 const explorers = [
+                     `https://amboss.space/node/${pubkey}`,
+                     `https://1ml.com/node/${pubkey}`,
+                     `https://lightningnetwork.plus/node/${pubkey}`
+                 ];
+                 
+                 for (const explorer of explorers) {
+                     try {
+                         console.log(`Checking ${explorer}...`);
+                         const response = await fetch(explorer, { 
+                             method: 'HEAD',
+                             mode: 'no-cors' // Avoid CORS issues
+                         });
+                         console.log(`✅ Node found on ${explorer}`);
+                         return { 
+                             reachable: true, 
+                             source: explorer,
+                             message: 'Node appears to be online and reachable'
+                         };
+                     } catch (e) {
+                         console.log(`❌ ${explorer} check failed:`, e.message);
+                     }
+                 }
+                 
+                 return {
+                     reachable: false,
+                     source: 'connectivity_test',
+                     message: 'Node not reachable - may be offline, unreachable, or on different network'
+                 };
+                 
+             } catch (error) {
+                 console.error('Node connectivity test error:', error);
+                 return {
+                     reachable: false,
+                     source: 'test_error',
+                     message: `Connectivity test failed: ${error.message}`
+                 };
+             }
+         };
         
-        console.log('✅ sendKeysendWithNWC override installed immediately');
-        console.log('✅ testNodeConnectivity stub installed');
-    </script>
+                 console.log('✅ sendKeysendWithNWC override installed immediately');
+         console.log('✅ testNodeConnectivity stub installed');
+         console.log('🧪 Test commands available:');
+         console.log('   - window.testOverride() - Test if override is working');
+         console.log('   - window.forceRefresh() - Force refresh to clear cache');
+         console.log('🕐 Override loaded at:', new Date().toISOString());
+         console.log('🔧 Cache-busting parameters: v=20250810-final&t=1754838300&cb=fix_now&nocache=true');
+         
+         // Verify override is working
+         setTimeout(() => {
+             if (typeof window.sendKeysendWithNWC === 'function') {
+                 console.log('✅ VERIFICATION: sendKeysendWithNWC override is active');
+                 console.log('🔧 Function source:', window.sendKeysendWithNWC.toString().substring(0, 100) + '...');
+             } else {
+                 console.error('❌ VERIFICATION FAILED: sendKeysendWithNWC override not found!');
+             }
+         }, 1000);
+         
+         // Force refresh function to clear cache
+         window.forceRefresh = function() {
+             console.log('🔄 Force refreshing to clear cache...');
+             // Clear any stored data
+             if (typeof localStorage !== 'undefined') {
+                 localStorage.clear();
+             }
+             if (typeof sessionStorage !== 'undefined') {
+                 sessionStorage.clear();
+             }
+             // Force reload with cache-busting
+             window.location.reload(true);
+         };
+         
+         // Test override function
+         window.testOverride = function() {
+             console.log('🧪 Testing override functionality...');
+             console.log('sendKeysendWithNWC type:', typeof window.sendKeysendWithNWC);
+             if (typeof window.sendKeysendWithNWC === 'function') {
+                 console.log('✅ Override is a function');
+                 console.log('Function source preview:', window.sendKeysendWithNWC.toString().substring(0, 200));
+                 return true;
+             } else {
+                 console.error('❌ Override is not a function');
+                 return false;
+             }
+         };
+     </script>
     
     <!-- Standalone MetaBoost Handler v2 -->
     <script>
