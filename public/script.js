@@ -1393,7 +1393,9 @@ function updatePaymentProofVisibility() {
 }
 
 // On page load, set payment proof field visibility
+console.log('🔄 Adding DOMContentLoaded listener...');
 window.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 DOMContentLoaded event fired!');
     updatePaymentProofVisibility();
     const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
     if (nwcInput) {
@@ -2886,6 +2888,9 @@ function displayMetaBoostResult(result, sentData) {
 // Make function globally available
 window.sendMetaBoostMetadata = sendMetaBoostMetadata;
 
+// Debug: Verify script loaded completely
+console.log('📜 Script loaded completely, sendMetaBoostMetadata available:', typeof window.sendMetaBoostMetadata);
+
 // ===== PodPay Stub (since we're not loading the full module) =====
 window.podpay = {
     parseValueBlocks: () => [],
@@ -2913,3 +2918,44 @@ if (typeof window.nostrTools === 'undefined' && typeof window.nostr !== 'undefin
 console.log('✅ script.js loaded successfully');
 console.log('nostr-tools available:', typeof window.nostrTools !== 'undefined');
 console.log('nostr available:', typeof window.nostr !== 'undefined');
+
+// ===== Form Handler Setup =====
+console.log('🔄 Setting up metaBoost form handler...');
+
+// Wait for DOM to be ready and add form handler
+function setupFormHandler() {
+    const metaBoostForm = document.getElementById('real-payment-form');
+    if (metaBoostForm) {
+        console.log('✅ Found metaBoost form, adding event listener');
+        
+        // Remove any existing listeners
+        metaBoostForm.onsubmit = null;
+        
+        // Add new event listener
+        metaBoostForm.addEventListener('submit', function(event) {
+            console.log('🚀 Form submit event triggered!');
+            event.preventDefault();
+            event.stopPropagation();
+            
+            if (typeof window.sendMetaBoostMetadata === 'function') {
+                window.sendMetaBoostMetadata(event);
+            } else {
+                console.error('❌ sendMetaBoostMetadata function not found!');
+            }
+            
+            return false;
+        });
+        
+        console.log('✅ Form handler setup complete');
+    } else {
+        console.log('⏳ Form not found yet, trying again...');
+        setTimeout(setupFormHandler, 100);
+    }
+}
+
+// Start setup immediately if DOM is ready, otherwise wait
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupFormHandler);
+} else {
+    setupFormHandler();
+}
