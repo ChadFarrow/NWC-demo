@@ -20,10 +20,6 @@
       "destination": "/api/metaboost.js"
     },
     {
-      "source": "/metaboost-dashboard.html",
-      "destination": "/api/metaboost-dashboard.js"
-    },
-    {
       "source": "/dashboard.html",
       "destination": "/public/dashboard.html"
     },
