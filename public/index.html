@@ -81,39 +81,24 @@
                 <h2 class="card-title">Send Boost Metadata (metaBoost API)</h2>
             </div>
             <div id="payment-form-container">
-                <form id="real-payment-form">
-                    <div class="form-group">
-                        <label class="form-label">Amount (sats)</label>
-                        <input type="number" class="form-input" id="payment-amount" min="1" required>
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Message</label>
-                        <input type="text" class="form-input" id="payment-message" maxlength="240">
-                    </div>
-                    <div class="form-group">
-                        <label class="form-label">Recipients (select one or more splits)</label>
-                        <label style="display:block; margin-bottom:0.5em;"><input type="checkbox" id="select-all-recipients"> Select All</label>
-                        <div id="recipient-checkboxes"></div>
-                    </div>
-                    <div class="form-group" id="payment-proof-group">
-                        <label class="form-label">Payment Proof (preimage, invoice, etc.)</label>
-                        <input type="text" class="form-input" id="payment-proof" required placeholder="Paste payment proof here">
-                    </div>
-                    <button class="btn btn-primary" type="button" onclick="
-                        console.log('🚀 Inline button clicked!');
-                        event.preventDefault();
-                        const form = document.getElementById('real-payment-form');
-                        const syntheticEvent = { target: form, preventDefault: () => {}, stopPropagation: () => {} };
-                        if (typeof window.sendMetaBoostMetadata === 'function') {
-                            console.log('📤 Calling sendMetaBoostMetadata...');
-                            window.sendMetaBoostMetadata(syntheticEvent);
-                        } else {
-                            console.error('❌ sendMetaBoostMetadata not found!');
-                            alert('Function not found - check console');
-                        }
-                        return false;
-                    ">Send metaBoost Metadata</button>
-                </form>
+                <div class="form-group">
+                    <label class="form-label">Amount (sats)</label>
+                    <input type="number" class="form-input" id="payment-amount" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Message</label>
+                    <input type="text" class="form-input" id="payment-message" maxlength="240">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Recipients (select one or more splits)</label>
+                    <label style="display:block; margin-bottom:0.5em;"><input type="checkbox" id="select-all-recipients"> Select All</label>
+                    <div id="recipient-checkboxes"></div>
+                </div>
+                <div class="form-group" id="payment-proof-group">
+                    <label class="form-label">Payment Proof (preimage, invoice, etc.)</label>
+                    <input type="text" class="form-input" id="payment-proof" required placeholder="Paste payment proof here">
+                </div>
+                <button class="btn btn-primary" type="button" onclick="handleMetaBoostSubmit(event)">Send metaBoost Metadata</button>
                 <button class="btn btn-secondary" style="margin-top:1rem; width:100%;" onclick="sendNormalBoost()">Send Boost</button>
                 <div style="margin-top: 1rem; font-size: 0.95em; color: #aaa;">
                     <strong>How this works:</strong> Pay with your wallet, then paste the payment proof above. This will POST boost metadata to the metaBoost endpoint, following the <a href="https://github.com/Podcastindex-org/podcast-namespace/discussions/676" target="_blank">Podcastindex metaBoost proposal</a>.

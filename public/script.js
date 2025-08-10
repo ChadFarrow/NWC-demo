@@ -2654,8 +2654,8 @@ window.copyTLVToClipboard = function() {
 };
 
 // Send metaBoost metadata to the API endpoint
-async function sendMetaBoostMetadata(event) {
-    console.log('🚀 sendMetaBoostMetadata called!', event);
+async function sendMetaBoostMetadata(event, metaBoostData = null) {
+    console.log('🚀 sendMetaBoostMetadata called!', event, metaBoostData);
     
     if (event && event.preventDefault) {
         event.preventDefault();
@@ -2664,77 +2664,88 @@ async function sendMetaBoostMetadata(event) {
         console.error('❌ No preventDefault method available', event);
     }
     
-    const form = event ? event.target : document.getElementById('real-payment-form');
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
+    // If no metaBoostData provided, try to get it from form (fallback)
+    if (!metaBoostData) {
+        try {
+            // Get form data
+            const amount = document.getElementById('payment-amount').value;
+            const message = document.getElementById('payment-message').value;
+            const paymentProof = document.getElementById('payment-proof').value;
+            
+            // Validate required fields
+            if (!amount || !paymentProof) {
+                throw new Error('Amount and Payment Proof are required');
+            }
+            
+            // Get selected recipients
+            const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+            const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
+            
+            if (recipients.length === 0) {
+                throw new Error('Please select at least one recipient');
+            }
+            
+            // Get podcast and episode info from parsed feed
+            const valueBlocks = window._lastValueBlocks || [];
+            const feedUrl = document.querySelector('input[type="url"]').value;
+            const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
+            const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
+            
+            // Prepare metaBoost data following the spec
+            metaBoostData = {
+                // Required fields
+                amount: parseInt(amount),
+                paymentProof: paymentProof,
+                
+                // Boost metadata
+                message: message || '',
+                action: 'boost',
+                boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                
+                // Value amounts (in millisats for compatibility)
+                value_msat: parseInt(amount) * 1000,
+                value_msat_total: parseInt(amount) * 1000,
+                
+                // Recipients and splits
+                recipients: recipients,
+                
+                // Podcast/Episode info
+                podcast: podcastTitle,
+                episode: episodeTitle,
+                feedUrl: feedUrl,
+                episodeGuid: window._currentEpisodeGuid || null,
+                
+                // App and sender info
+                appName: 'V4V Lightning Payment Tester',
+                senderName: 'Anonymous Tester',
+                
+                // Timestamps
+                timestamp: new Date().toISOString(),
+                ts: Math.floor(Date.now() / 1000),
+                
+                // Additional payment info
+                paymentInfo: {
+                    type: 'lightning',
+                    network: 'mainnet',
+                    method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
+                }
+            };
+        } catch (error) {
+            console.error('Failed to prepare metaBoost data:', error);
+            alert(`Error preparing data: ${error.message}`);
+            return;
+        }
+    }
+    
+    // Find the submit button for feedback
+    const submitBtn = document.querySelector('#payment-form-container .btn.btn-primary');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Send metaBoost Metadata';
     
     try {
-        // Get form data
-        const amount = document.getElementById('payment-amount').value;
-        const message = document.getElementById('payment-message').value;
-        const paymentProof = document.getElementById('payment-proof').value;
-        
-        // Validate required fields
-        if (!amount || !paymentProof) {
-            throw new Error('Amount and Payment Proof are required');
-        }
-        
-        // Get selected recipients
-        const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
-        const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
-        
-        if (recipients.length === 0) {
-            throw new Error('Please select at least one recipient');
-        }
-        
-        // Get podcast and episode info from parsed feed
-        const valueBlocks = window._lastValueBlocks || [];
-        const feedUrl = document.querySelector('input[type="url"]').value;
-        const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
-        const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
-        
-        // Prepare metaBoost data following the spec
-        const metaBoostData = {
-            // Required fields
-            amount: parseInt(amount),
-            paymentProof: paymentProof,
-            
-            // Boost metadata
-            message: message || '',
-            action: 'boost',
-            boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            
-            // Value amounts (in millisats for compatibility)
-            value_msat: parseInt(amount) * 1000,
-            value_msat_total: parseInt(amount) * 1000,
-            
-            // Recipients and splits
-            recipients: recipients,
-            
-            // Podcast/Episode info
-            podcast: podcastTitle,
-            episode: episodeTitle,
-            feedUrl: feedUrl,
-            episodeGuid: window._currentEpisodeGuid || null,
-            
-            // App and sender info
-            appName: 'V4V Lightning Payment Tester',
-            senderName: 'Anonymous Tester',
-            
-            // Timestamps
-            timestamp: new Date().toISOString(),
-            ts: Math.floor(Date.now() / 1000),
-            
-            // Additional payment info
-            paymentInfo: {
-                type: 'lightning',
-                network: 'mainnet',
-                method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
-            }
-        };
-        
         // Show sending state
-        setButtonFeedback(submitBtn, '📤 Sending...', null, null, false);
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, '📤 Sending...', null, null, false);
+        }
         
         // Send to metaBoost API
         const response = await fetch('/api/metaboost', {
@@ -2752,7 +2763,9 @@ async function sendMetaBoostMetadata(event) {
         const result = await response.json();
         
         // Show success
-        setButtonFeedback(submitBtn, '✅ Sent Successfully!', 3000, originalText);
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, '✅ Sent Successfully!', 3000, originalText);
+        }
         
         console.log('📤 MetaBoost sent successfully, displaying result...');
         console.log('📊 API Result:', result);
@@ -2761,12 +2774,21 @@ async function sendMetaBoostMetadata(event) {
         // Display the result
         displayMetaBoostResult(result, metaBoostData);
         
-        // Clear form
-        form.reset();
+        // Clear form inputs
+        document.getElementById('payment-amount').value = '';
+        document.getElementById('payment-message').value = '';
+        document.getElementById('payment-proof').value = '';
+        
+        // Uncheck all recipient checkboxes
+        document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
         
     } catch (error) {
         console.error('metaBoost Error:', error);
-        setButtonFeedback(submitBtn, `❌ Error: ${error.message}`, 3000, originalText);
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, `❌ Error: ${error.message}`, 3000, originalText);
+        } else {
+            alert(`Error: ${error.message}`);
+        }
     }
 }
 
@@ -2919,66 +2941,93 @@ console.log('✅ script.js loaded successfully');
 console.log('nostr-tools available:', typeof window.nostrTools !== 'undefined');
 console.log('nostr available:', typeof window.nostr !== 'undefined');
 
-// ===== Form Handler Setup =====
-console.log('🔄 Setting up metaBoost form handler...');
+// Form handling is now done via button click - no form submit handlers needed
 
-// Wait for DOM to be ready and add form handler
-function setupFormHandler() {
-    const metaBoostForm = document.getElementById('real-payment-form');
-    if (metaBoostForm) {
-        console.log('✅ Found metaBoost form, adding event listener');
-        
-        // Remove any existing listeners
-        metaBoostForm.onsubmit = null;
-        
-        // Add new event listener
-        metaBoostForm.addEventListener('submit', function(event) {
-            console.log('🚀 Form submit event triggered!');
-            event.preventDefault();
-            event.stopPropagation();
-            
-            if (typeof window.sendMetaBoostMetadata === 'function') {
-                window.sendMetaBoostMetadata(event);
-            } else {
-                console.error('❌ sendMetaBoostMetadata function not found!');
-            }
-            
-            return false;
-        });
-        
-        console.log('✅ Form handler setup complete');
-    } else {
-        console.log('⏳ Form not found yet, trying again...');
-        setTimeout(setupFormHandler, 100);
-    }
-}
-
-// Start setup immediately if DOM is ready, otherwise wait
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupFormHandler);
-} else {
-    setupFormHandler();
-}
-
-// ===== Button Click Handler (Alternative to form submission) =====
+// ===== Button Click Handler =====
 window.handleMetaBoostSubmit = function(event) {
     console.log('🚀 handleMetaBoostSubmit called via onclick!');
     event.preventDefault();
     event.stopPropagation();
     
-    // Create a synthetic form event
-    const form = document.getElementById('real-payment-form');
-    const syntheticEvent = {
-        target: form,
-        preventDefault: () => {},
-        stopPropagation: () => {}
+    // Get form data directly from input elements
+    const amount = document.getElementById('payment-amount').value;
+    const message = document.getElementById('payment-message').value;
+    const paymentProof = document.getElementById('payment-proof').value;
+    
+    // Validate required fields
+    if (!amount || !paymentProof) {
+        alert('Amount and Payment Proof are required');
+        return false;
+    }
+    
+    // Get selected recipients
+    const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+    const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
+    
+    if (recipients.length === 0) {
+        alert('Please select at least one recipient');
+        return false;
+    }
+    
+    // Get podcast and episode info from parsed feed
+    const valueBlocks = window._lastValueBlocks || [];
+    const feedUrl = document.querySelector('input[type="url"]').value;
+    const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
+    const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
+    
+    // Prepare metaBoost data following the spec
+    const metaBoostData = {
+        // Required fields
+        amount: parseInt(amount),
+        paymentProof: paymentProof,
+        
+        // Boost metadata
+        message: message || '',
+        action: 'boost',
+        boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+        
+        // Value amounts (in millisats for compatibility)
+        value_msat: parseInt(amount) * 1000,
+        value_msat_total: parseInt(amount) * 1000,
+        
+        // Recipients and splits
+        recipients: recipients,
+        
+        // Podcast/Episode info
+        podcast: podcastTitle,
+        episode: episodeTitle,
+        feedUrl: feedUrl,
+        episodeGuid: window._currentEpisodeGuid || null,
+        
+        // App and sender info
+        appName: 'V4V Lightning Payment Tester',
+        senderName: 'Anonymous Tester',
+        
+        // Timestamps
+        timestamp: new Date().toISOString(),
+        ts: Math.floor(Date.now() / 1000),
+        
+        // Additional payment info
+        paymentInfo: {
+            type: 'lightning',
+            network: 'mainnet',
+            method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
+        }
     };
     
+    // Call the sendMetaBoostMetadata function with the data
     if (typeof window.sendMetaBoostMetadata === 'function') {
         console.log('📤 Calling sendMetaBoostMetadata from button click...');
-        window.sendMetaBoostMetadata(syntheticEvent);
+        // Create a synthetic event object for compatibility
+        const syntheticEvent = {
+            target: { reset: () => {} }, // Mock form reset method
+            preventDefault: () => {},
+            stopPropagation: () => {}
+        };
+        window.sendMetaBoostMetadata(syntheticEvent, metaBoostData);
     } else {
         console.error('❌ sendMetaBoostMetadata function not available!');
+        alert('MetaBoost function not available - please refresh the page');
     }
     
     return false;
