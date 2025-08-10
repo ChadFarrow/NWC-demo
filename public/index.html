@@ -124,6 +124,27 @@
     <!-- Standalone MetaBoost Handler v2 -->
     <script>
         console.log('🔧 Loading standalone metaBoost handler v2...');
+        console.log('🚨 CACHE TEST: Script loaded at', new Date().toISOString());
+        
+        // Add a global function to check Alby methods manually
+        window.checkAlbyMethods = async function() {
+            try {
+                const nwcString = document.querySelector('input[placeholder*="nostr+walletconnect"]').value;
+                if (!nwcString) {
+                    alert('Please enter your NWC string first');
+                    return;
+                }
+                
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                const info = await nwcjs.getInfo(nwcInfo);
+                const methods = info?.result?.methods || [];
+                
+                alert(`🔍 ALBY SUPPORTED METHODS:\n\n${methods.join('\n')}\n\nSupports keysend: ${methods.includes('pay_keysend') ? '✅ YES' : '❌ NO'}`);
+                console.log('Full wallet info:', info);
+            } catch (e) {
+                alert('Error checking methods: ' + e.message);
+            }
+        };
         
         // Wait for DOM and other scripts to load
         setTimeout(() => {
