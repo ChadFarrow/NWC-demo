@@ -2633,9 +2633,16 @@ window.copyTLVToClipboard = function() {
 
 // Send metaBoost metadata to the API endpoint
 async function sendMetaBoostMetadata(event) {
-    event.preventDefault();
+    console.log('🚀 sendMetaBoostMetadata called!', event);
     
-    const form = event.target;
+    if (event && event.preventDefault) {
+        event.preventDefault();
+        console.log('✅ preventDefault called');
+    } else {
+        console.error('❌ No preventDefault method available', event);
+    }
+    
+    const form = event ? event.target : document.getElementById('real-payment-form');
     const submitBtn = form.querySelector('button[type="submit"]');
     const originalText = submitBtn.innerHTML;
     
@@ -2740,6 +2747,9 @@ async function sendMetaBoostMetadata(event) {
         setButtonFeedback(submitBtn, `❌ Error: ${error.message}`, 3000, originalText);
     }
 }
+
+// Export immediately after definition
+window.sendMetaBoostMetadata = sendMetaBoostMetadata;
 
 // Display metaBoost result
 function displayMetaBoostResult(result, sentData) {
