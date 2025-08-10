@@ -2502,31 +2502,7 @@ async function testRelayConnectionInternal(relay) {
     });
 }
 
-// Test specific node connectivity
-window.testNodeConnectivity = async function testNodeConnectivityUI() {
-    const pubkey = prompt('Enter node pubkey to test connectivity:');
-    if (!pubkey) return;
-    
-    console.log('\n=== Node Connectivity Test ===');
-    console.log('Testing pubkey:', pubkey);
-    
-    try {
-        const result = await testNodeConnectivity(pubkey);
-        console.log('Connectivity result:', result);
-        
-        let message = `🔍 Node Connectivity Test Results\n\n`;
-        message += `Pubkey: ${pubkey.substring(0, 16)}...\n`;
-        message += `Status: ${result.reachable ? '✅ Reachable' : '❌ Not Reachable'}\n`;
-        message += `Source: ${result.source}\n`;
-        message += `Message: ${result.message}`;
-        
-        alert(message);
-        
-    } catch (error) {
-        console.error('Node connectivity test error:', error);
-        alert('❌ Test failed: ' + error.message);
-    }
-};
+
 
 // Test keysend functionality specifically
 window.testKeysend = async function testKeysend() {
