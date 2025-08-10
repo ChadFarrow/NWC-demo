@@ -2959,3 +2959,29 @@ if (document.readyState === 'loading') {
 } else {
     setupFormHandler();
 }
+
+// ===== Button Click Handler (Alternative to form submission) =====
+window.handleMetaBoostSubmit = function(event) {
+    console.log('🚀 handleMetaBoostSubmit called via onclick!');
+    event.preventDefault();
+    event.stopPropagation();
+    
+    // Create a synthetic form event
+    const form = document.getElementById('real-payment-form');
+    const syntheticEvent = {
+        target: form,
+        preventDefault: () => {},
+        stopPropagation: () => {}
+    };
+    
+    if (typeof window.sendMetaBoostMetadata === 'function') {
+        console.log('📤 Calling sendMetaBoostMetadata from button click...');
+        window.sendMetaBoostMetadata(syntheticEvent);
+    } else {
+        console.error('❌ sendMetaBoostMetadata function not available!');
+    }
+    
+    return false;
+};
+
+console.log('✅ handleMetaBoostSubmit function registered:', typeof window.handleMetaBoostSubmit);
