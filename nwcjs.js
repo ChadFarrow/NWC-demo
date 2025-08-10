@@ -641,19 +641,33 @@ var nwcjs = {
     },
     payKeysend: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
         console.log('🔧 Using nwcjs.payKeysend method');
+        console.log('🎯 Destination:', destination, 'Length:', destination.length);
+        
+        // Validate destination format
+        if (!destination || typeof destination !== 'string') {
+            throw new Error('Invalid destination: must be a non-empty string');
+        }
+        
+        if (destination.length !== 33 && destination.length !== 66 && destination.length !== 64) {
+            throw new Error(`Invalid destination length: ${destination.length}. Expected 33, 64, or 66 characters.`);
+        }
         
         // Try different destination formats to work around the "invalid vertex length" issue
         var destinationFormats = [
             { name: 'original', value: destination, params: { destination: destination } },
             { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
             { name: 'pubkey', value: destination, params: { pubkey: destination } },
-            { name: 'node_id', value: destination, params: { node_id: destination } }
+            { name: 'node_id', value: destination, params: { node_id: destination } },
+            // Add more specific formats for common cases
+            { name: 'compressed_pubkey', value: destination.length === 66 ? destination : '02' + destination, params: { destination: destination.length === 66 ? destination : '02' + destination } },
+            { name: 'uncompressed_pubkey', value: destination.length === 66 ? destination : '04' + destination, params: { destination: destination.length === 66 ? destination : '04' + destination } }
         ];
         
         console.log('Trying keysend with destination formats:', {
             original_length: destinationFormats[0].value.length,
             raw_hex_length: destinationFormats[1].value.length,
-            sample: destination.substring(0, 16) + '...'
+            sample: destination.substring(0, 16) + '...',
+            total_formats: destinationFormats.length
         });
         
         // Try each format until one works
@@ -670,6 +684,13 @@ var nwcjs = {
                         amount: amount * 1000, // Convert sats to msat
                         message: message || ""
                     }
+                });
+                
+                console.log(`📤 Sending ${format.name} format:`, {
+                    method: "pay_keysend",
+                    params: format.params,
+                    amount_msat: amount * 1000,
+                    message: message || ""
                 });
                 
                 var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
@@ -705,7 +726,10 @@ var nwcjs = {
                             console.log(`🔍 Error details for format ${format.name}:`, {
                                 error: one_i_want.error,
                                 error_type: typeof one_i_want.error,
-                                error_keys: one_i_want.error ? Object.keys(one_i_want.error) : 'no keys'
+                                error_keys: one_i_want.error ? Object.keys(one_i_want.error) : 'no keys',
+                                format_used: format.name,
+                                destination_value: format.value,
+                                destination_length: format.value.length
                             });
                         }
                         return one_i_want;
