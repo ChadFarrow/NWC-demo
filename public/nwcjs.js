@@ -583,14 +583,14 @@ var nwcjs = {
         var msg = JSON.stringify({
             method: "pay_keysend",
             params: {
-                destination: destinationFormats.full_hex, // Start with full hex
-                pubkey: destinationFormats.full_hex, // Add as alternative parameter
-                node_id: destinationFormats.full_hex, // Add another alternative
+                pubkey: destinationFormats.full_hex, // NIP-47 standard parameter name
                 amount: amount, // Amount in msat
-                message: message || "",
-                custom_records: {
-                    "34349334": nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
-                }
+                tlv_records: [
+                    {
+                        type: 34349334, // Standard message TLV record type
+                        value: nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
+                    }
+                ]
             }
         });
         var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
