@@ -2141,6 +2141,7 @@ window.sendNormalBoost = async function sendNormalBoost() {
                     results.push({ recipient, amount: recipientAmount, success: true });
                 } else {
                     console.log('❌ Keysend payment failed:', keysendResult.error);
+                    console.log('🔍 Full keysend result for debugging:', keysendResult);
                     results.push({ recipient, amount: recipientAmount, success: false, error: keysendResult.error });
                 }
             } else {
@@ -2408,20 +2409,23 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                     result: result
                 };
             } else {
+                // Log the raw error structure first
+                console.log('🔍 Raw keysend error structure:', JSON.stringify(result, null, 2));
+                console.log('🔍 Error object details:', {
+                    hasError: !!result?.error,
+                    errorType: typeof result?.error,
+                    errorMessage: result?.error?.message,
+                    fullError: result?.error
+                });
+                
                 let errorMsg = result?.error?.message || result?.error || 'Keysend payment failed';
+                console.log('🔍 Original error message:', errorMsg);
                 
-                // Improve error messages for common keysend failures
-                if (errorMsg.includes('invalid vertex length of 0')) {
-                    errorMsg = 'Node not found in Lightning Network (may be offline or unreachable)';
-                } else if (errorMsg.includes('unable to find a path')) {
-                    errorMsg = 'No route found to destination node';
-                } else if (errorMsg.includes('insufficient capacity')) {
-                    errorMsg = 'Insufficient channel capacity for payment';
-                }
-                
+                // Don't process the error message yet - show the raw error first
                 return {
                     success: false,
-                    error: errorMsg
+                    error: errorMsg,
+                    rawError: result
                 };
             }
         }
