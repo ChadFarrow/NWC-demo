@@ -1573,6 +1573,21 @@ async function testWalletCapabilities(nwcString) {
         await waitForNostrTools();
         console.log('✅ nostr-tools loaded');
         
+        // Convert secret from hex string to Uint8Array if needed
+        let secretKey = secret;
+        if (typeof secret === 'string') {
+            // Remove any 'nsec' prefix if present
+            if (secret.startsWith('nsec')) {
+                throw new Error('NWC secret should be hex, not nsec format');
+            }
+            // Ensure it's a valid hex string
+            if (!/^[0-9a-fA-F]{64}$/.test(secret)) {
+                throw new Error('Invalid secret key format - should be 64 hex characters');
+            }
+            // nostr-tools expects hex string for the secret
+            secretKey = secret;
+        }
+        
         // Build get_info request
         const req = {
             method: "get_info",
@@ -1581,13 +1596,22 @@ async function testWalletCapabilities(nwcString) {
         const reqJson = JSON.stringify(req);
         console.log('get_info request:', reqJson);
         
-        // Encrypt request
-        const encrypted = await window.nostrTools.nip04.encrypt(secret, pubkey, reqJson);
-        
-        // Build Nostr event
-        const clientPubkey = await window.nostrTools.getPublicKey(secret);
+        // Get client public key first
+        const clientPubkey = await window.nostrTools.getPublicKey(secretKey);
         console.log('Client pubkey:', clientPubkey);
         
+        // Encrypt request
+        console.log('Encrypting request with NIP-04...');
+        console.log('- Using secretKey (hex):', secretKey.substring(0, 8) + '...');
+        console.log('- Target pubkey:', pubkey);
+        const encrypted = await window.nostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
+        
+        if (!encrypted) {
+            throw new Error('Failed to encrypt get_info request');
+        }
+        console.log('✅ Request encrypted, length:', encrypted.length);
+        
+        // Build Nostr event
         const event = {
             kind: 23194,
             pubkey: clientPubkey,
@@ -1601,7 +1625,7 @@ async function testWalletCapabilities(nwcString) {
             pubkey: event.pubkey,
             created_at: event.created_at,
             tags: event.tags,
-            contentLength: event.content.length
+            contentLength: event.content ? event.content.length : 0
         });
         
         const finalized = window.nostrTools.finalizeEvent(event, secret);
@@ -1673,7 +1697,7 @@ async function testWalletCapabilities(nwcString) {
                             
                             if (ev.tags.some(t => t[0] === 'e' && t[1] === event.id)) {
                                 console.log('✅ Found matching response event, decrypting...');
-                                const decrypted = await window.nostrTools.nip04.decrypt(secret, pubkey, ev.content);
+                                const decrypted = await window.nostrTools.nip04.decrypt(secretKey, pubkey, ev.content);
                                 console.log('✅ get_info response decrypted:', decrypted);
                                 const response = JSON.parse(decrypted);
                                 
@@ -2042,7 +2066,7 @@ async function payInvoiceWithNWC(nwcString, invoice) {
                             }
                             
                             try {
-                                const decrypted = await window.nostrTools.nip04.decrypt(secret, pubkey, ev.content);
+                                const decrypted = await window.nostrTools.nip04.decrypt(secretKey, pubkey, ev.content);
                                 console.log(`✅ Decrypted invoice response (${requestId}):`, decrypted);
                                 const response = JSON.parse(decrypted);
                                 
@@ -2944,46 +2968,96 @@ window.copyTLVToClipboard = function() {
 };
 
 // Send metaBoost metadata to the API endpoint
-async function sendMetaBoostMetadata(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const submitBtn = form.querySelector('button[type="submit"]');
-    const originalText = submitBtn.innerHTML;
-    
+async function sendMetaBoostMetadata(event, metaBoostData = null) {
+    console.log('🚀 sendMetaBoostMetadata called!', event, metaBoostData);
+
+    if (event && event.preventDefault) {
+        event.preventDefault();
+    }
+
+    // If no metaBoostData provided, try to get it from form (fallback)
+    if (!metaBoostData) {
+        try {
+            // Get form data
+            const amount = document.getElementById('payment-amount').value;
+            const message = document.getElementById('payment-message').value;
+            const paymentProof = document.getElementById('payment-proof').value;
+
+            // Validate required fields
+            if (!amount || !paymentProof) {
+                throw new Error('Amount and Payment Proof are required');
+            }
+
+            // Get selected recipients
+            const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+            const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
+
+            if (recipients.length === 0) {
+                throw new Error('Please select at least one recipient');
+            }
+
+            // Get podcast and episode info from parsed feed
+            const valueBlocks = window._lastValueBlocks || [];
+            const feedUrl = document.querySelector('input[type="url"]').value;
+            const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
+            const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
+
+            // Prepare metaBoost data following the spec
+            metaBoostData = {
+                // Required fields
+                amount: parseInt(amount),
+                paymentProof: paymentProof,
+
+                // Boost metadata
+                message: message || '',
+                action: 'boost',
+                boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+
+                // Value amounts (in millisats for compatibility)
+                value_msat: parseInt(amount) * 1000,
+                value_msat_total: parseInt(amount) * 1000,
+
+                // Recipients and splits
+                recipients: recipients,
+
+                // Podcast/Episode info
+                podcast: podcastTitle,
+                episode: episodeTitle,
+                feedUrl: feedUrl,
+                episodeGuid: window._currentEpisodeGuid || null,
+
+                // App and sender info
+                appName: 'V4V Lightning Payment Tester',
+                senderName: 'Anonymous Tester',
+
+                // Timestamps
+                timestamp: new Date().toISOString(),
+                ts: Math.floor(Date.now() / 1000),
+
+                // Additional payment info
+                paymentInfo: {
+                    type: 'lightning',
+                    network: 'mainnet',
+                    method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
+                }
+            };
+        } catch (error) {
+            console.error('Failed to prepare metaBoost data:', error);
+            alert(`Error preparing data: ${error.message}`);
+            return;
+        }
+    }
+
+    // Find the submit button for feedback
+    const submitBtn = document.querySelector('#payment-form-container .btn.btn-primary');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Send metaBoost Metadata';
+
     try {
-        // Get form data
-        const amount = document.getElementById('payment-amount').value;
-        const message = document.getElementById('payment-message').value;
-        const paymentProof = document.getElementById('payment-proof').value;
-        
-        // Validate required fields
-        if (!amount || !paymentProof) {
-            throw new Error('Amount and Payment Proof are required');
-        }
-        
-        // Get selected recipients
-        const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
-        const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
-        
-        if (recipients.length === 0) {
-            throw new Error('Please select at least one recipient');
-        }
-        
-        // Prepare metaBoost data
-        const metaBoostData = {
-            amount: parseInt(amount),
-            message: message || '',
-            paymentProof: paymentProof,
-            recipients: recipients,
-            timestamp: new Date().toISOString(),
-            feedUrl: document.querySelector('input[type="url"]').value,
-            episodeGuid: window._currentEpisodeGuid || null
-        };
-        
         // Show sending state
-        setButtonFeedback(submitBtn, '📤 Sending...', null, null, false);
-        
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, '📤 Sending...', null, null, false);
+        }
+
         // Send to metaBoost API
         const response = await fetch('/api/metaboost', {
             method: 'POST',
@@ -2992,25 +3066,40 @@ async function sendMetaBoostMetadata(event) {
             },
             body: JSON.stringify(metaBoostData)
         });
-        
+
         if (!response.ok) {
             throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
-        
+
         const result = await response.json();
-        
+
         // Show success
-        setButtonFeedback(submitBtn, '✅ Sent Successfully!', 3000, originalText);
-        
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, '✅ Sent Successfully!', 3000, originalText);
+        }
+
+        console.log('📤 MetaBoost sent successfully, displaying result...');
+        console.log('📊 Result:', result);
+        console.log('📊 Sent data:', metaBoostData);
+
         // Display the result
         displayMetaBoostResult(result, metaBoostData);
-        
-        // Clear form
-        form.reset();
-        
+
+        // Clear form inputs
+        document.getElementById('payment-amount').value = '';
+        document.getElementById('payment-message').value = '';
+        document.getElementById('payment-proof').value = '';
+
+        // Uncheck all recipient checkboxes
+        document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
+
     } catch (error) {
         console.error('metaBoost Error:', error);
-        setButtonFeedback(submitBtn, `❌ Error: ${error.message}`, 3000, originalText);
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, `❌ Error: ${error.message}`, 3000, originalText);
+        } else {
+            alert(`Error: ${error.message}`);
+        }
     }
 }
 
@@ -3092,6 +3181,94 @@ if (typeof window.nostrTools === 'undefined') {
         finalizeEvent: () => ({ id: 'stub', sig: 'stub' })
     };
 }
+
+// ===== Button Click Handler =====
+window.handleMetaBoostSubmit = function(event) {
+    console.log('🚀 handleMetaBoostSubmit called via onclick!');
+    event.preventDefault();
+    event.stopPropagation();
+
+    // Get form data directly from input elements
+    const amount = document.getElementById('payment-amount').value;
+    const message = document.getElementById('payment-message').value;
+    const paymentProof = document.getElementById('payment-proof').value;
+
+    // Validate required fields
+    if (!amount || !paymentProof) {
+        alert('Amount and Payment Proof are required');
+        return false;
+    }
+
+    // Get selected recipients
+    const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+    const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
+
+    if (recipients.length === 0) {
+        alert('Please select at least one recipient');
+        return false;
+    }
+
+    // Get podcast and episode info from parsed feed
+    const valueBlocks = window._lastValueBlocks || [];
+    const feedUrl = document.querySelector('input[type="url"]').value;
+    const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
+    const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
+
+    // Prepare metaBoost data following the spec
+    const metaBoostData = {
+        // Required fields
+        amount: parseInt(amount),
+        paymentProof: paymentProof,
+
+        // Boost metadata
+        message: message || '',
+        action: 'boost',
+        boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+
+        // Value amounts (in millisats for compatibility)
+        value_msat: parseInt(amount) * 1000,
+        value_msat_total: parseInt(amount) * 1000,
+
+        // Recipients and splits
+        recipients: recipients,
+
+        // Podcast/Episode info
+        podcast: podcastTitle,
+        episode: episodeTitle,
+        feedUrl: feedUrl,
+        episodeGuid: window._currentEpisodeGuid || null,
+
+        // App and sender info
+        appName: 'V4V Lightning Payment Tester',
+        senderName: 'Anonymous Tester',
+
+        // Timestamps
+        timestamp: new Date().toISOString(),
+        ts: Math.floor(Date.now() / 1000),
+
+        // Additional payment info
+        paymentInfo: {
+            type: 'lightning',
+            network: 'mainnet',
+            method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
+        }
+    };
+
+    // Call the sendMetaBoostMetadata function with the data
+    if (typeof window.sendMetaBoostMetadata === 'function') {
+        console.log('📤 Calling sendMetaBoostMetadata from button click...');
+        // Create a synthetic event object for compatibility
+        const syntheticEvent = {
+            target: { reset: () => {} }, // Mock form reset method
+            preventDefault: () => {},
+            stopPropagation: () => {}
+        };
+        window.sendMetaBoostMetadata(syntheticEvent, metaBoostData);
+    } else {
+        console.error('❌ sendMetaBoostMetadata function not available!');
+        alert('MetaBoost function not available - please refresh the page');
+    }
+};
 
 // ===== Main Script Functions =====
 

@@ -24,52 +24,112 @@ function setButtonFeedback(btn, text, duration = 2000, resetText = null, enable 
 
 // --- Fetch and Parse RSS Feed ---
 async function fetchRssFeed(feedUrl) {
-    // Try multiple CORS proxies in order
-    const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`,
-        `https://cors-anywhere.herokuapp.com/${feedUrl}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(feedUrl)}`
-    ];
+    console.log('🔍 Fetching RSS feed from:', feedUrl);
     
-    for (let i = 0; i < proxies.length; i++) {
-        const proxyUrl = proxies[i];
-        console.log(`Trying proxy ${i + 1}/${proxies.length}: ${proxyUrl}`);
+    // Try direct fetch first
+    try {
+        console.log('📡 Attempting direct fetch...');
+        const response = await fetch(feedUrl);
+        console.log('📡 Direct fetch response status:', response.status);
+        console.log('📡 Direct fetch response headers:', response.headers);
         
-        try {
-            const response = await fetch(proxyUrl);
-            if (response.ok) {
-                console.log(`✅ Success with proxy ${i + 1}`);
-                return await response.text();
-            } else {
-                console.log(`❌ Proxy ${i + 1} failed with status: ${response.status}`);
-            }
-        } catch (error) {
-            console.log(`❌ Proxy ${i + 1} failed with error:`, error.message);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        const text = await response.text();
+        console.log('📡 Direct fetch successful, content length:', text.length);
+        console.log('📡 Content preview:', text.substring(0, 200));
+        return text;
+    } catch (error) {
+        console.log('❌ Direct fetch failed:', error.message);
     }
     
-    // If all proxies fail, try direct fetch (might work in some cases)
-    console.log('All proxies failed, trying direct fetch...');
+    // Try proxy 1
     try {
-        const response = await fetch(feedUrl);
-        if (response.ok) {
-            console.log('✅ Direct fetch succeeded');
-            return await response.text();
+        console.log('📡 Trying proxy 1: api.allorigins.win');
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 1 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 1 failed: HTTP ${response.status}`);
         }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 1, content length:', text.length);
+        console.log('📡 Content preview:', text.substring(0, 200));
+        return text;
     } catch (error) {
-        console.log('❌ Direct fetch also failed:', error.message);
+        console.log('❌ Proxy 1 failed:', error.message);
+    }
+    
+    // Try proxy 2
+    try {
+        console.log('📡 Trying proxy 2: cors-anywhere');
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${feedUrl}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 2 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 2 failed: HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 2, content length:', text.length);
+        return text;
+    } catch (error) {
+        console.log('❌ Proxy 2 failed:', error.message);
+    }
+    
+    // Try proxy 3
+    try {
+        console.log('📡 Trying proxy 3: cors.bridged');
+        const proxyUrl = `https://cors.bridged.cc/${feedUrl}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 3 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 3 failed: HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 3, content length:', text.length);
+        return text;
+    } catch (error) {
+        console.log('❌ Proxy 3 failed:', error.message);
+    }
+    
+    // Try proxy 4
+    try {
+        console.log('📡 Trying proxy 4: thingproxy');
+        const proxyUrl = `https://thingproxy.freeboard.io/fetch/${feedUrl}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 4 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 4 failed: HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 4, content length:', text.length);
+        return text;
+    } catch (error) {
+        console.log('❌ Proxy 4 failed:', error.message);
     }
     
     throw new Error('Failed to fetch RSS feed: all proxy attempts failed');
 }
 
 function parseXml(xmlText) {
+    console.log('Parsing XML text:', xmlText.substring(0, 200) + '...');
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
     const parseError = xmlDoc.querySelector('parsererror');
     if (parseError) {
-        throw new Error('Invalid XML format in RSS feed');
+        console.error('XML Parse Error:', parseError.textContent);
+        console.error('XML Content Preview:', xmlText.substring(0, 500));
+        throw new Error('Invalid XML format in RSS feed: ' + parseError.textContent);
     }
     return xmlDoc;
 }
@@ -82,10 +142,22 @@ async function parseValueBlock() {
     try {
         const rssInput = document.querySelector('input[type="url"]');
         const feedUrl = rssInput.value;
+        console.log('🔍 Parse button clicked, feed URL:', feedUrl);
+        
         if (!feedUrl) throw new Error('Please enter a RSS feed URL');
+        
+        console.log('📡 Fetching RSS feed...');
         const xmlText = await fetchRssFeed(feedUrl);
+        console.log('📡 RSS feed fetched, length:', xmlText.length);
+        
+        console.log('🔍 Parsing XML...');
         const xmlDoc = parseXml(xmlText);
+        console.log('✅ XML parsed successfully');
+        
+        console.log('🔍 Extracting value blocks...');
         const valueBlocks = extractValueBlocks(xmlDoc);
+        console.log('🔍 Value blocks extracted:', valueBlocks.length);
+        
         if (valueBlocks.length === 0) {
             setButtonFeedback(btn, '⚠️ No value blocks found', 2000, originalText);
             return;
@@ -95,10 +167,11 @@ async function parseValueBlock() {
         window._allEpisodesLoaded = false;
         window._currentEpisodeLimit = 5; // Track how many episodes we've loaded
         
+        console.log('🔍 Displaying value blocks...');
         displayValueBlocks(valueBlocks, xmlDoc);
         setButtonFeedback(btn, '✅ Parsed Successfully', 2000, originalText);
     } catch (error) {
-        console.error('Error parsing value block:', error);
+        console.error('❌ Error parsing value block:', error);
         setButtonFeedback(btn, '❌ Error: ' + error.message, 3000, originalText);
     }
 }
@@ -106,10 +179,6 @@ async function parseValueBlock() {
 // --- Value Block Extraction ---
 function extractValueBlocks(xmlDoc, episodeLimit = 5) {
     const valueBlocks = [];
-    
-    // Extract and store podcast title
-    const channelTitle = xmlDoc.querySelector('channel > title');
-    window._lastPodcastTitle = channelTitle ? channelTitle.textContent : 'Unknown Podcast';
     
     // First, get all episode items and limit based on episodeLimit
     const allItems = Array.from(xmlDoc.querySelectorAll('item'));
@@ -175,11 +244,6 @@ function extractValueBlocks(xmlDoc, episodeLimit = 5) {
                 if (titleEl) {
                     title = titleEl.textContent.trim() || title;
                 }
-            }
-            
-            // Store first episode title for metaBoost
-            if (valueBlocks.length === 0 && title) {
-                window._lastEpisodeTitle = title;
             }
             
             valueBlocks.push({ title, lightningAddresses, nodePubkeys, metaBoost, index: index + 1 });
@@ -781,7 +845,9 @@ function clearSettings() {
 function loadTestFeed() {
     const rssInput = document.querySelector('input[type="url"]');
     // Use relative path instead of hardcoded URL for better deployment compatibility
-    rssInput.value = window.location.origin + '/metaboost-test-feed.xml';
+    const testFeedUrl = window.location.origin + '/metaboost-test-feed.xml';
+    console.log('📂 Loading test feed from:', testFeedUrl);
+    rssInput.value = testFeedUrl;
     rssInput.style.borderColor = 'var(--accent-success)';
     setTimeout(() => { rssInput.style.borderColor = 'var(--border-color)'; }, 2000);
     setButtonFeedback(event.target, '✅ Loaded', 1500, event.target.innerHTML);
@@ -915,30 +981,13 @@ function displayWalletCapabilities(walletInfo) {
 // Add this function to send a test metaBoost
 async function sendTestMetaBoost(endpoint) {
     const payload = {
-        // Podcast/Episode info
-        podcast: window._lastPodcastTitle || "Test Show",
-        episode: window._lastEpisodeTitle || "LNURL Testing Episode",
-        
-        // Payment amounts
+        podcast: "Test Show",
+        episode: "LNURL Testing Episode",
+        sender: "testuser@wallet.com",
         amount: 1000,
-        value_msat: 1000000,
-        value_msat_total: 1000000,
-        
-        // Boost metadata
-        action: 'boost',
-        boostId: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         message: "Great episode!",
-        
-        // Sender info
-        senderName: "Test User",
-        appName: "V4V Lightning Payment Tester",
-        
-        // Payment proof (simulated)
-        paymentProof: "test_proof_" + Math.random().toString(36).substr(2),
-        
-        // Timestamps
-        timestamp: new Date().toISOString(),
-        ts: Math.floor(Date.now() / 1000)
+        payment_proof: "test-proof",
+        timestamp: new Date().toISOString()
     };
     try {
         const res = await fetch(endpoint, {
@@ -1393,9 +1442,7 @@ function updatePaymentProofVisibility() {
 }
 
 // On page load, set payment proof field visibility
-console.log('🔄 Adding DOMContentLoaded listener...');
 window.addEventListener('DOMContentLoaded', () => {
-    console.log('🚀 DOMContentLoaded event fired!');
     updatePaymentProofVisibility();
     const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
     if (nwcInput) {
@@ -1413,108 +1460,7 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
-    
-    // Load existing boosts from localStorage
-    loadStoredBoosts();
-    
-    // Add form submit handler
-    const metaBoostForm = document.getElementById('real-payment-form');
-    if (metaBoostForm) {
-        console.log('✅ Found metaBoost form, adding event listener');
-        metaBoostForm.addEventListener('submit', function(event) {
-            console.log('🚀 Form submit event triggered!');
-            event.preventDefault();
-            sendMetaBoostMetadata(event);
-        });
-    } else {
-        console.error('❌ Could not find real-payment-form');
-    }
-    
-    // Test if function is available
-    if (typeof window.sendMetaBoostMetadata === 'function') {
-        console.log('✅ sendMetaBoostMetadata function is available');
-    } else {
-        console.error('❌ sendMetaBoostMetadata function is NOT available');
-    }
 });
-
-// Load and display stored boosts
-function loadStoredBoosts() {
-    try {
-        const stored = localStorage.getItem('metaboosts');
-        if (stored) {
-            const storedBoosts = JSON.parse(stored);
-            if (storedBoosts.length > 0) {
-                // Display the boost history section
-                displayMetaBoostHistory(storedBoosts);
-            }
-        }
-    } catch (e) {
-        console.error('Failed to load stored boosts:', e);
-    }
-}
-
-// Helper function to display boost history
-function displayMetaBoostHistory(storedBoosts) {
-    const container = document.getElementById('payment-form-container');
-    if (!container) return;
-    
-    // Create or update boost history section
-    let historySection = document.getElementById('boost-history');
-    if (!historySection) {
-        historySection = document.createElement('div');
-        historySection.id = 'boost-history';
-        historySection.innerHTML = '<h3 style="margin-top: 2rem; color: var(--accent-primary);">📜 Recent MetaBoosts</h3>';
-        container.appendChild(historySection);
-    }
-    
-    // Display all recent boosts
-    const boostList = document.createElement('div');
-    boostList.innerHTML = storedBoosts.map((boost, index) => `
-        <div class="metaBoost-result" style="
-            margin-top: 1rem;
-            padding: 1rem;
-            background: var(--bg-secondary);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            color: var(--text-primary);
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <h4 style="margin: 0; color: var(--text-secondary);">
-                    ⚡ ${boost.amount} sats
-                </h4>
-                <span style="color: var(--text-muted); font-size: 0.9rem;">
-                    ${new Date(boost.timestamp || boost.receivedAt).toLocaleString()}
-                </span>
-            </div>
-            <div style="display: grid; gap: 0.5rem; font-size: 0.95rem;">
-                <div><strong>Podcast:</strong> ${boost.podcast}</div>
-                <div><strong>Episode:</strong> ${boost.episode}</div>
-                ${boost.message ? `<div><strong>Message:</strong> <em style="color: var(--accent-primary);">"${boost.message}"</em></div>` : ''}
-                <div><strong>Boost ID:</strong> <code style="font-size: 0.85rem;">${boost.boostId}</code></div>
-                <details style="margin-top: 0.5rem;">
-                    <summary style="cursor: pointer; color: var(--accent-primary);">View Details</summary>
-                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
-                        <div><strong>Payment Proof:</strong> <code>${boost.paymentProof.substring(0, 30)}...</code></div>
-                        <div><strong>Recipients:</strong> ${boost.recipients.join(', ')}</div>
-                        <div><strong>App:</strong> ${boost.appName}</div>
-                        <div><strong>Sender:</strong> ${boost.senderName}</div>
-                        <div><strong>Action:</strong> ${boost.action}</div>
-                        <div><strong>Value (msat):</strong> ${boost.value_msat}</div>
-                    </div>
-                </details>
-            </div>
-        </div>
-    `).join('');
-    
-    // Replace existing boost list
-    const existingList = historySection.querySelector('.boost-list');
-    if (existingList) {
-        existingList.remove();
-    }
-    boostList.className = 'boost-list';
-    historySection.appendChild(boostList);
-}
 
 // Test relay connectivity with more detailed diagnostics
 window.testRelayConnection = async function testRelayConnection() {
@@ -1627,6 +1573,21 @@ async function testWalletCapabilities(nwcString) {
         await waitForNostrTools();
         console.log('✅ nostr-tools loaded');
         
+        // Convert secret from hex string to Uint8Array if needed
+        let secretKey = secret;
+        if (typeof secret === 'string') {
+            // Remove any 'nsec' prefix if present
+            if (secret.startsWith('nsec')) {
+                throw new Error('NWC secret should be hex, not nsec format');
+            }
+            // Ensure it's a valid hex string
+            if (!/^[0-9a-fA-F]{64}$/.test(secret)) {
+                throw new Error('Invalid secret key format - should be 64 hex characters');
+            }
+            // nostr-tools expects hex string for the secret
+            secretKey = secret;
+        }
+        
         // Build get_info request
         const req = {
             method: "get_info",
@@ -1635,17 +1596,22 @@ async function testWalletCapabilities(nwcString) {
         const reqJson = JSON.stringify(req);
         console.log('get_info request:', reqJson);
         
-        // Encrypt request
-        const encrypted = await window.nostrTools.nip04.encrypt(secret, pubkey, reqJson);
-        
-        if (!encrypted) {
-            throw new Error('Failed to encrypt NWC request - check your NWC string');
-        }
-        
-        // Build Nostr event
-        const clientPubkey = await window.nostrTools.getPublicKey(secret);
+        // Get client public key first
+        const clientPubkey = await window.nostrTools.getPublicKey(secretKey);
         console.log('Client pubkey:', clientPubkey);
         
+        // Encrypt request
+        console.log('Encrypting request with NIP-04...');
+        console.log('- Using secretKey (hex):', secretKey.substring(0, 8) + '...');
+        console.log('- Target pubkey:', pubkey);
+        const encrypted = await window.nostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
+        
+        if (!encrypted) {
+            throw new Error('Failed to encrypt get_info request');
+        }
+        console.log('✅ Request encrypted, length:', encrypted.length);
+        
+        // Build Nostr event
         const event = {
             kind: 23194,
             pubkey: clientPubkey,
@@ -1731,35 +1697,20 @@ async function testWalletCapabilities(nwcString) {
                             
                             if (ev.tags.some(t => t[0] === 'e' && t[1] === event.id)) {
                                 console.log('✅ Found matching response event, decrypting...');
+                                const decrypted = await window.nostrTools.nip04.decrypt(secretKey, pubkey, ev.content);
+                                console.log('✅ get_info response decrypted:', decrypted);
+                                const response = JSON.parse(decrypted);
                                 
-                                if (!ev.content) {
-                                    console.error('❌ Response event has no content');
-                                    reject(new Error('Response event has no content'));
-                                    return;
-                                }
+                                clearTimeout(timeoutId);
+                                if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
+                                ws.close();
                                 
-                                try {
-                                    const decrypted = await window.nostrTools.nip04.decrypt(secret, pubkey, ev.content);
-                                    console.log('✅ get_info response decrypted:', decrypted);
-                                    const response = JSON.parse(decrypted);
-                                    
-                                    clearTimeout(timeoutId);
-                                    if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                                    ws.close();
-                                    
-                                    if (response.result) {
-                                        console.log('🎉 Wallet capabilities received:', response.result);
-                                        resolve(response.result);
-                                    } else {
-                                        console.log('❌ get_info error:', response.error);
-                                        reject(new Error(response.error || 'get_info failed'));
-                                    }
-                                } catch (decryptError) {
-                                    console.error('❌ Failed to decrypt response:', decryptError);
-                                    clearTimeout(timeoutId);
-                                    if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                                    ws.close();
-                                    reject(new Error('Failed to decrypt wallet response'));
+                                if (response.result) {
+                                    console.log('🎉 Wallet capabilities received:', response.result);
+                                    resolve(response.result);
+                                } else {
+                                    console.log('❌ get_info error:', response.error);
+                                    reject(new Error(response.error || 'get_info failed'));
                                 }
                             } else {
                                 console.log('⚠️ Event does not match our request ID');
@@ -2115,7 +2066,7 @@ async function payInvoiceWithNWC(nwcString, invoice) {
                             }
                             
                             try {
-                                const decrypted = await window.nostrTools.nip04.decrypt(secret, pubkey, ev.content);
+                                const decrypted = await window.nostrTools.nip04.decrypt(secretKey, pubkey, ev.content);
                                 console.log(`✅ Decrypted invoice response (${requestId}):`, decrypted);
                                 const response = JSON.parse(decrypted);
                                 
@@ -2270,7 +2221,7 @@ window.debugNWCConnection = async function debugNWCConnection() {
 };
 
 // Standalone wallet capabilities test function
-window.testWalletCapabilitiesStandalone = async function() {
+window.testWalletCapabilitiesStandalone = async function testWalletCapabilitiesStandalone() {
     const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
     const nwcString = nwcInput.value.trim();
     
@@ -2310,29 +2261,392 @@ window.testWalletCapabilitiesStandalone = async function() {
     }
 };
 
+// ===== PodPay Enhanced Functionality =====
 
+/**
+ * Enhanced value block parsing using PodPay library
+ */
+window.parseValueBlocksWithPodPay = async function() {
+    if (!window.podpay) {
+        alert('PodPay library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    try {
+        const rssInput = document.querySelector('input[type="url"]');
+        const feedUrl = rssInput.value;
+        if (!feedUrl) throw new Error('Please enter a RSS feed URL');
+        
+        const xmlText = await fetchRssFeed(feedUrl);
+        const xmlDoc = parseXml(xmlText);
+        
+        // Use PodPay to parse value blocks
+        const valueBlocks = window.podpay.parseValueBlocks(xmlDoc);
+        
+        if (valueBlocks.length === 0) {
+            alert('No value blocks found using PodPay parser');
+            return;
+        }
+        
+        console.log('PodPay parsed value blocks:', valueBlocks);
+        
+        // Display enhanced value blocks
+        displayEnhancedValueBlocks(valueBlocks);
+        
+    } catch (error) {
+        console.error('PodPay parsing error:', error);
+        alert('Error parsing with PodPay: ' + error.message);
+    }
+};
 
+/**
+ * Display enhanced value blocks with PodPay data
+ */
+function displayEnhancedValueBlocks(valueBlocks) {
+    const container = document.querySelector('.container');
+    
+    // Remove existing enhanced display
+    const existing = document.getElementById('podpay-enhanced-display');
+    if (existing) existing.remove();
+    
+    const displayDiv = document.createElement('div');
+    displayDiv.id = 'podpay-enhanced-display';
+    displayDiv.className = 'card';
+    displayDiv.innerHTML = `
+        <div class="card-header">
+            <div class="card-icon">🚀</div>
+            <h2 class="card-title">PodPay Enhanced Value Blocks</h2>
+        </div>
+        <div class="enhanced-content">
+            <p>Found ${valueBlocks.length} value blocks using PodPay library</p>
+            <div class="value-blocks-list"></div>
+        </div>
+    `;
+    
+    container.appendChild(displayDiv);
+    
+    const listContainer = displayDiv.querySelector('.value-blocks-list');
+    
+    valueBlocks.forEach((block, index) => {
+        const blockDiv = document.createElement('div');
+        blockDiv.className = 'enhanced-block';
+        blockDiv.innerHTML = `
+            <h3>${block.title || `Episode ${index + 1}`}</h3>
+            <p><strong>Type:</strong> ${block.type}</p>
+            <p><strong>Suggested:</strong> ${PodPayUtils.formatAmount(block.suggested)}</p>
+            <p><strong>Recipients:</strong> ${block.recipients.length}</p>
+            <div class="recipients-list">
+                ${block.recipients.map(recipient => `
+                    <div class="recipient">
+                        <span class="name">${recipient.name || 'Unknown'}</span>
+                        <span class="address">${recipient.address}</span>
+                        <span class="type">${recipient.type}</span>
+                        <span class="split">${recipient.split}%</span>
+                    </div>
+                `).join('')}
+            </div>
+        `;
+        listContainer.appendChild(blockDiv);
+    });
+};
 
+/**
+ * Calculate payment splits using PodPay
+ */
+window.calculateSplitsWithPodPay = function() {
+    if (!window.podpay) {
+        alert('PodPay library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    const amountInput = document.getElementById('payment-amount');
+    const amount = parseInt(amountInput.value);
+    
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid payment amount');
+        return;
+    }
+    
+    // Get current value blocks from the page
+    const valueBlocks = window._lastValueBlocks || [];
+    if (valueBlocks.length === 0) {
+        alert('No value blocks available. Please parse a feed first.');
+        return;
+    }
+    
+    // Use first value block for demonstration
+    const block = valueBlocks[0];
+    const recipients = [
+        ...(block.lightningAddresses || []).map(addr => ({
+            name: addr.name || 'Lightning Address',
+            address: addr.address,
+            type: 'lightning',
+            split: parseInt(addr.split) || 0
+        })),
+        ...(block.nodePubkeys || []).map(node => ({
+            name: node.name || 'Node Pubkey',
+            address: node.address,
+            type: 'node',
+            split: parseInt(node.split) || 0
+        }))
+    ];
+    
+    if (recipients.length === 0) {
+        alert('No recipients found in value blocks');
+        return;
+    }
+    
+    // Calculate splits using PodPay
+    const calculatedSplits = window.podpay.calculateSplits(amount, recipients);
+    
+    // Display calculated splits
+    displayCalculatedSplits(amount, calculatedSplits);
+};
 
-
-
-
+/**
+ * Display calculated payment splits
+ */
+function displayCalculatedSplits(totalAmount, splits) {
+    const container = document.querySelector('.container');
+    
+    // Remove existing splits display
+    const existing = document.getElementById('podpay-splits-display');
+    if (existing) existing.remove();
+    
+    const displayDiv = document.createElement('div');
+    displayDiv.id = 'podpay-splits-display';
+    displayDiv.className = 'card';
+    displayDiv.innerHTML = `
+        <div class="card-header">
+            <div class="card-icon">💰</div>
+            <h2 class="card-title">PodPay Payment Splits</h2>
+        </div>
+        <div class="splits-content">
+            <p><strong>Total Amount:</strong> ${PodPayUtils.formatAmount(totalAmount)}</p>
+            <div class="splits-list"></div>
+        </div>
+    `;
+    
+    container.appendChild(displayDiv);
+    
+    const listContainer = displayDiv.querySelector('.splits-list');
+    
+    splits.forEach((split, index) => {
+        const splitDiv = document.createElement('div');
+        splitDiv.className = 'split-item';
+        splitDiv.innerHTML = `
+            <div class="split-header">
+                <span class="name">${split.name}</span>
+                <span class="amount">${PodPayUtils.formatAmount(split.calculatedAmount)}</span>
+            </div>
+            <div class="split-details">
+                <span class="address">${split.address}</span>
+                <span class="type">${split.type}</span>
+                <span class="split-percent">${split.split}%</span>
+                ${split.remaining > 0 ? `<span class="remaining">+${split.remaining} remaining</span>` : ''}
+            </div>
+        `;
+        listContainer.appendChild(splitDiv);
+    });
+};
 
 /**
  * Generate metaBoost metadata using PodPay
  */
+window.generateMetaBoostWithPodPay = function() {
+    if (!window.podpay) {
+        alert('PodPay library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    const amountInput = document.getElementById('payment-amount');
+    const messageInput = document.getElementById('payment-message');
+    
+    const amount = parseInt(amountInput.value);
+    const message = messageInput.value;
+    
+    if (!amount || amount <= 0) {
+        alert('Please enter a valid payment amount');
+        return;
+    }
+    
+    // Get current value blocks
+    const valueBlocks = window._lastValueBlocks || [];
+    if (valueBlocks.length === 0) {
+        alert('No value blocks available. Please parse a feed first.');
+        return;
+    }
+    
+    const block = valueBlocks[0];
+    const recipients = [
+        ...(block.lightningAddresses || []).map(addr => ({
+            name: addr.name || 'Lightning Address',
+            address: addr.address,
+            type: 'lightning',
+            split: parseInt(addr.split) || 0
+        })),
+        ...(block.nodePubkeys || []).map(node => ({
+            name: node.name || 'Node Pubkey',
+            address: node.address,
+            type: 'node',
+            split: parseInt(node.split) || 0
+        }))
+    ];
+    
+    if (recipients.length === 0) {
+        alert('No recipients found in value blocks');
+        return;
+    }
+    
+    // Calculate splits first
+    const calculatedSplits = window.podpay.calculateSplits(amount, recipients);
+    
+    // Generate metaBoost metadata
+    const payment = {
+        amount,
+        message,
+        podcast: 'Test Podcast',
+        episode: block.title || 'Test Episode'
+    };
+    
+    const metaBoost = window.podpay.generateMetaBoost(payment, calculatedSplits);
+    
+    // Display metaBoost metadata
+    displayMetaBoostMetadata(metaBoost);
+};
 
+/**
+ * Display metaBoost metadata
+ */
+function displayMetaBoostMetadata(metaBoost) {
+    const container = document.querySelector('.container');
+    
+    // Remove existing metaBoost display
+    const existing = document.getElementById('podpay-metaboost-display');
+    if (existing) existing.remove();
+    
+    const displayDiv = document.createElement('div');
+    displayDiv.id = 'podpay-metaboost-display';
+    displayDiv.className = 'card';
+    displayDiv.innerHTML = `
+        <div class="card-header">
+            <div class="card-icon">📡</div>
+            <h2 class="card-title">PodPay metaBoost Metadata</h2>
+        </div>
+        <div class="metaboost-content">
+            <pre class="metaboost-json">${JSON.stringify(metaBoost, null, 2)}</pre>
+            <button class="btn btn-primary" onclick="copyMetaBoostToClipboard()">📋 Copy to Clipboard</button>
+        </div>
+    `;
+    
+    container.appendChild(displayDiv);
+};
 
-
-
-
+/**
+ * Copy metaBoost metadata to clipboard
+ */
+window.copyMetaBoostToClipboard = function() {
+    const jsonElement = document.querySelector('.metaboost-json');
+    if (jsonElement) {
+        navigator.clipboard.writeText(jsonElement.textContent).then(() => {
+            alert('metaBoost metadata copied to clipboard!');
+        }).catch(err => {
+            console.error('Failed to copy:', err);
+            alert('Failed to copy to clipboard');
+        });
+    }
+};
 
 /**
  * Test PodPay library functionality
  */
+window.testPodPayLibrary = function() {
+    if (!window.podpay) {
+        alert('PodPay library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    try {
+        // Test validation functions
+        const testAddress = 'chadf@getalby.com';
+        const testPubkey = '032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51';
+        
+        const addressValid = window.podpay.validateLightningAddress(testAddress);
+        const pubkeyValid = window.podpay.validateNodePubkey(testPubkey);
+        
+        // Test utility functions
+        const sats = 1000;
+        const btc = PodPayUtils.satsToBTC(sats);
+        const backToSats = PodPayUtils.btcToSats(btc);
+        
+        let message = '✅ PodPay Library Test Results:\n\n';
+        message += `Lightning Address Validation: ${addressValid ? '✅' : '❌'}\n`;
+        message += `Node Pubkey Validation: ${pubkeyValid ? '✅' : '❌'}\n`;
+        message += `Sats to BTC Conversion: ${sats} sats = ${btc} BTC\n`;
+        message += `BTC to Sats Conversion: ${btc} BTC = ${backToSats} sats\n`;
+        message += `Amount Formatting: ${PodPayUtils.formatAmount(sats)}\n`;
+        
+        alert(message);
+        
+    } catch (error) {
+        console.error('PodPay library test failed:', error);
+        alert('PodPay library test failed: ' + error.message);
+    }
+};
 
-
-
+/**
+ * Test TLV record generation and LNURL functionality
+ */
+window.testTLVAndLNURL = function() {
+    if (!window.podpay) {
+        alert('PodPay library not loaded. Please refresh the page.');
+        return;
+    }
+    
+    try {
+        // Test metadata
+        const metadata = {
+            podcast: 'V4V Lightning Tester',
+            episode: 'Test Episode with TLV Records',
+            message: 'This is a test boost with TLV metadata!',
+            action: 'boost',
+            app: 'v4v-lightning-tester',
+            ts: Math.floor(Date.now() / 1000),
+            feedUrl: 'https://example.com/feed.xml',
+            episodeGuid: 'test-episode-123'
+        };
+        
+        // Generate TLV records
+        const tlvRecords = window.podpay.generateTLVRecords(metadata);
+        
+        // Test LNURL generation
+        const lightningAddress = 'chadf@getalby.com';
+        const lnurl = window.podpay.generateLNURL(lightningAddress);
+        
+        // Test TLV parsing
+        const parsedMetadata = window.podpay.parseTLVRecords(tlvRecords);
+        
+        let message = '🚀 TLV & LNURL Test Results:\n\n';
+        message += `Lightning Address: ${lightningAddress}\n`;
+        message += `Generated LNURL: ${lnurl}\n\n`;
+        message += `Generated ${tlvRecords.length} TLV Records:\n`;
+        
+        tlvRecords.forEach((record, index) => {
+            message += `${index + 1}. Type: ${record.type}, Value: ${record.value.length} bytes\n`;
+        });
+        
+        message += `\nParsed Metadata:\n`;
+        Object.entries(parsedMetadata).forEach(([key, value]) => {
+            message += `• ${key}: ${value}\n`;
+        });
+        
+        alert(message);
+        
+    } catch (error) {
+        console.error('TLV & LNURL test failed:', error);
+        alert('TLV & LNURL test failed: ' + error.message);
+    }
+};
 
 /**
  * Generate LNURL-pay invoice with TLV records
@@ -2656,14 +2970,11 @@ window.copyTLVToClipboard = function() {
 // Send metaBoost metadata to the API endpoint
 async function sendMetaBoostMetadata(event, metaBoostData = null) {
     console.log('🚀 sendMetaBoostMetadata called!', event, metaBoostData);
-    
+
     if (event && event.preventDefault) {
         event.preventDefault();
-        console.log('✅ preventDefault called');
-    } else {
-        console.error('❌ No preventDefault method available', event);
     }
-    
+
     // If no metaBoostData provided, try to get it from form (fallback)
     if (!metaBoostData) {
         try {
@@ -2671,58 +2982,58 @@ async function sendMetaBoostMetadata(event, metaBoostData = null) {
             const amount = document.getElementById('payment-amount').value;
             const message = document.getElementById('payment-message').value;
             const paymentProof = document.getElementById('payment-proof').value;
-            
+
             // Validate required fields
             if (!amount || !paymentProof) {
                 throw new Error('Amount and Payment Proof are required');
             }
-            
+
             // Get selected recipients
             const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
             const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
-            
+
             if (recipients.length === 0) {
                 throw new Error('Please select at least one recipient');
             }
-            
+
             // Get podcast and episode info from parsed feed
             const valueBlocks = window._lastValueBlocks || [];
             const feedUrl = document.querySelector('input[type="url"]').value;
             const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
             const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
-            
+
             // Prepare metaBoost data following the spec
             metaBoostData = {
                 // Required fields
                 amount: parseInt(amount),
                 paymentProof: paymentProof,
-                
+
                 // Boost metadata
                 message: message || '',
                 action: 'boost',
                 boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                
+
                 // Value amounts (in millisats for compatibility)
                 value_msat: parseInt(amount) * 1000,
                 value_msat_total: parseInt(amount) * 1000,
-                
+
                 // Recipients and splits
                 recipients: recipients,
-                
+
                 // Podcast/Episode info
                 podcast: podcastTitle,
                 episode: episodeTitle,
                 feedUrl: feedUrl,
                 episodeGuid: window._currentEpisodeGuid || null,
-                
+
                 // App and sender info
                 appName: 'V4V Lightning Payment Tester',
                 senderName: 'Anonymous Tester',
-                
+
                 // Timestamps
                 timestamp: new Date().toISOString(),
                 ts: Math.floor(Date.now() / 1000),
-                
+
                 // Additional payment info
                 paymentInfo: {
                     type: 'lightning',
@@ -2736,17 +3047,17 @@ async function sendMetaBoostMetadata(event, metaBoostData = null) {
             return;
         }
     }
-    
+
     // Find the submit button for feedback
     const submitBtn = document.querySelector('#payment-form-container .btn.btn-primary');
     const originalText = submitBtn ? submitBtn.innerHTML : 'Send metaBoost Metadata';
-    
+
     try {
         // Show sending state
         if (submitBtn) {
             setButtonFeedback(submitBtn, '📤 Sending...', null, null, false);
         }
-        
+
         // Send to metaBoost API
         const response = await fetch('/api/metaboost', {
             method: 'POST',
@@ -2755,33 +3066,33 @@ async function sendMetaBoostMetadata(event, metaBoostData = null) {
             },
             body: JSON.stringify(metaBoostData)
         });
-        
+
         if (!response.ok) {
             throw new Error(`API Error: ${response.status} ${response.statusText}`);
         }
-        
+
         const result = await response.json();
-        
+
         // Show success
         if (submitBtn) {
             setButtonFeedback(submitBtn, '✅ Sent Successfully!', 3000, originalText);
         }
-        
+
         console.log('📤 MetaBoost sent successfully, displaying result...');
-        console.log('📊 API Result:', result);
-        console.log('📊 Sent Data:', metaBoostData);
-        
+        console.log('📊 Result:', result);
+        console.log('📊 Sent data:', metaBoostData);
+
         // Display the result
         displayMetaBoostResult(result, metaBoostData);
-        
+
         // Clear form inputs
         document.getElementById('payment-amount').value = '';
         document.getElementById('payment-message').value = '';
         document.getElementById('payment-proof').value = '';
-        
+
         // Uncheck all recipient checkboxes
         document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]').forEach(cb => cb.checked = false);
-        
+
     } catch (error) {
         console.error('metaBoost Error:', error);
         if (submitBtn) {
@@ -2792,126 +3103,45 @@ async function sendMetaBoostMetadata(event, metaBoostData = null) {
     }
 }
 
-// Export immediately after definition
-window.sendMetaBoostMetadata = sendMetaBoostMetadata;
-
 // Display metaBoost result
 function displayMetaBoostResult(result, sentData) {
-    console.log('📊 Displaying metaBoost result:', { result, sentData });
-    
     const container = document.getElementById('payment-form-container');
-    if (!container) {
-        console.error('❌ Could not find payment-form-container element');
-        return;
-    }
     
-    console.log('✅ Found payment-form-container, proceeding with display');
+    // Create result display
+    const resultDiv = document.createElement('div');
+    resultDiv.className = 'metaBoost-result';
+    resultDiv.style.cssText = `
+        margin-top: 1rem;
+        padding: 1rem;
+        background: var(--card-bg);
+        border: 1px solid var(--accent-success);
+        border-radius: 8px;
+        color: var(--text-color);
+    `;
     
-    // Store boost in localStorage for persistence
-    let storedBoosts = [];
-    try {
-        const stored = localStorage.getItem('metaboosts');
-        if (stored) storedBoosts = JSON.parse(stored);
-    } catch (e) {
-        console.error('Failed to load stored boosts:', e);
-    }
+    resultDiv.innerHTML = `
+        <h4>✅ metaBoost Sent Successfully</h4>
+        <p><strong>Amount:</strong> ${sentData.amount} sats</p>
+        <p><strong>Message:</strong> ${sentData.message || 'None'}</p>
+        <p><strong>Payment Proof:</strong> ${sentData.paymentProof.substring(0, 20)}...</p>
+        <p><strong>Recipients:</strong> ${sentData.recipients.join(', ')}</p>
+        <p><strong>Timestamp:</strong> ${new Date(sentData.timestamp).toLocaleString()}</p>
+        <p><strong>API Response:</strong> ${result.message}</p>
+    `;
     
-    // Add new boost to the beginning
-    storedBoosts.unshift({
-        ...sentData,
-        apiResponse: result,
-        receivedAt: new Date().toISOString()
-    });
+    // Add to container
+    container.appendChild(resultDiv);
     
-    // Keep only last 20 boosts
-    if (storedBoosts.length > 20) {
-        storedBoosts = storedBoosts.slice(0, 20);
-    }
-    
-    // Save to localStorage
-    try {
-        localStorage.setItem('metaboosts', JSON.stringify(storedBoosts));
-    } catch (e) {
-        console.error('Failed to save boost:', e);
-    }
-    
-    // Create or update boost history section
-    let historySection = document.getElementById('boost-history');
-    if (!historySection) {
-        historySection = document.createElement('div');
-        historySection.id = 'boost-history';
-        historySection.innerHTML = '<h3 style="margin-top: 2rem; color: var(--accent-primary);">📜 Recent MetaBoosts</h3>';
-        container.appendChild(historySection);
-    }
-    
-    // Display all recent boosts
-    const boostList = document.createElement('div');
-    boostList.innerHTML = storedBoosts.map((boost, index) => `
-        <div class="metaBoost-result" style="
-            margin-top: 1rem;
-            padding: 1rem;
-            background: var(--bg-secondary);
-            border: 1px solid ${index === 0 ? 'var(--accent-success)' : 'var(--border-color)'};
-            border-radius: 8px;
-            color: var(--text-primary);
-            ${index === 0 ? 'animation: pulse 0.5s ease;' : ''}
-        ">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <h4 style="margin: 0; color: ${index === 0 ? 'var(--accent-success)' : 'var(--text-secondary)'};">
-                    ${index === 0 ? '✅ NEW' : '⚡'} ${boost.amount} sats
-                </h4>
-                <span style="color: var(--text-muted); font-size: 0.9rem;">
-                    ${new Date(boost.timestamp || boost.receivedAt).toLocaleString()}
-                </span>
-            </div>
-            <div style="display: grid; gap: 0.5rem; font-size: 0.95rem;">
-                <div><strong>Podcast:</strong> ${boost.podcast}</div>
-                <div><strong>Episode:</strong> ${boost.episode}</div>
-                ${boost.message ? `<div><strong>Message:</strong> <em style="color: var(--accent-primary);">"${boost.message}"</em></div>` : ''}
-                <div><strong>Boost ID:</strong> <code style="font-size: 0.85rem;">${boost.boostId}</code></div>
-                <details style="margin-top: 0.5rem;">
-                    <summary style="cursor: pointer; color: var(--accent-primary);">View Details</summary>
-                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
-                        <div><strong>Payment Proof:</strong> <code>${boost.paymentProof.substring(0, 30)}...</code></div>
-                        <div><strong>Recipients:</strong> ${boost.recipients.join(', ')}</div>
-                        <div><strong>App:</strong> ${boost.appName}</div>
-                        <div><strong>Sender:</strong> ${boost.senderName}</div>
-                        <div><strong>Action:</strong> ${boost.action}</div>
-                        <div><strong>Value (msat):</strong> ${boost.value_msat}</div>
-                    </div>
-                </details>
-            </div>
-        </div>
-    `).join('');
-    
-    // Replace existing boost list
-    const existingList = historySection.querySelector('.boost-list');
-    if (existingList) {
-        existingList.remove();
-    }
-    boostList.className = 'boost-list';
-    historySection.appendChild(boostList);
-    
-    // Add CSS animation if not already present
-    if (!document.getElementById('boost-animations')) {
-        const style = document.createElement('style');
-        style.id = 'boost-animations';
-        style.textContent = `
-            @keyframes pulse {
-                0% { transform: scale(1); }
-                50% { transform: scale(1.02); }
-                100% { transform: scale(1); }
-            }
-        `;
-        document.head.appendChild(style);
-    }
+    // Remove after 10 seconds
+    setTimeout(() => {
+        if (resultDiv.parentNode) {
+            resultDiv.parentNode.removeChild(resultDiv);
+        }
+    }, 10000);
 }
 
 // Make function globally available
 window.sendMetaBoostMetadata = sendMetaBoostMetadata;
-
-// Debug: Verify script loaded completely
-console.log('📜 Script loaded completely, sendMetaBoostMetadata available:', typeof window.sendMetaBoostMetadata);
 
 // ===== PodPay Stub (since we're not loading the full module) =====
 window.podpay = {
@@ -2934,79 +3164,88 @@ if (typeof window.nostrTools === 'undefined' && typeof window.nostr !== 'undefin
     window.nostrTools = window.nostr;
 }
 
-// ===== Main Script Functions =====
-
-// ===== Script Loading Debug =====
-console.log('✅ script.js loaded successfully');
-console.log('nostr-tools available:', typeof window.nostrTools !== 'undefined');
-console.log('nostr available:', typeof window.nostr !== 'undefined');
-
-// Form handling is now done via button click - no form submit handlers needed
+// Add error handling for missing nostr-tools
+if (typeof window.nostrTools === 'undefined') {
+    console.error('❌ nostr-tools library not loaded!');
+    console.log('💡 This will prevent NWC functionality from working.');
+    console.log('💡 Check the network tab to see if the CDN script failed to load.');
+    
+    // Create a stub to prevent errors
+    window.nostrTools = {
+        nip04: {
+            encrypt: () => Promise.reject(new Error('nostr-tools not loaded')),
+            decrypt: () => Promise.reject(new Error('nostr-tools not loaded'))
+        },
+        getPublicKey: () => Promise.reject(new Error('nostr-tools not loaded')),
+        getEventHash: () => 'stub',
+        finalizeEvent: () => ({ id: 'stub', sig: 'stub' })
+    };
+}
 
 // ===== Button Click Handler =====
 window.handleMetaBoostSubmit = function(event) {
     console.log('🚀 handleMetaBoostSubmit called via onclick!');
     event.preventDefault();
     event.stopPropagation();
-    
+
     // Get form data directly from input elements
     const amount = document.getElementById('payment-amount').value;
     const message = document.getElementById('payment-message').value;
     const paymentProof = document.getElementById('payment-proof').value;
-    
+
     // Validate required fields
     if (!amount || !paymentProof) {
         alert('Amount and Payment Proof are required');
         return false;
     }
-    
+
     // Get selected recipients
     const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
     const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
-    
+
     if (recipients.length === 0) {
         alert('Please select at least one recipient');
         return false;
     }
-    
+
     // Get podcast and episode info from parsed feed
     const valueBlocks = window._lastValueBlocks || [];
     const feedUrl = document.querySelector('input[type="url"]').value;
     const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
     const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
-    
+
     // Prepare metaBoost data following the spec
     const metaBoostData = {
         // Required fields
         amount: parseInt(amount),
         paymentProof: paymentProof,
-        
+
         // Boost metadata
         message: message || '',
         action: 'boost',
         boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        
+
         // Value amounts (in millisats for compatibility)
         value_msat: parseInt(amount) * 1000,
         value_msat_total: parseInt(amount) * 1000,
-        
+
         // Recipients and splits
         recipients: recipients,
-        
+
         // Podcast/Episode info
         podcast: podcastTitle,
         episode: episodeTitle,
         feedUrl: feedUrl,
         episodeGuid: window._currentEpisodeGuid || null,
-        
+
         // App and sender info
         appName: 'V4V Lightning Payment Tester',
         senderName: 'Anonymous Tester',
-        
+
         // Timestamps
         timestamp: new Date().toISOString(),
         ts: Math.floor(Date.now() / 1000),
-        
+
         // Additional payment info
         paymentInfo: {
             type: 'lightning',
@@ -3014,7 +3253,7 @@ window.handleMetaBoostSubmit = function(event) {
             method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
         }
     };
-    
+
     // Call the sendMetaBoostMetadata function with the data
     if (typeof window.sendMetaBoostMetadata === 'function') {
         console.log('📤 Calling sendMetaBoostMetadata from button click...');
@@ -3029,8 +3268,83 @@ window.handleMetaBoostSubmit = function(event) {
         console.error('❌ sendMetaBoostMetadata function not available!');
         alert('MetaBoost function not available - please refresh the page');
     }
-    
-    return false;
 };
 
-console.log('✅ handleMetaBoostSubmit function registered:', typeof window.handleMetaBoostSubmit);
+// ===== Main Script Functions =====
+
+// ===== Script Loading Debug =====
+console.log('✅ script.js loaded successfully');
+console.log('nostr-tools available:', typeof window.nostrTools !== 'undefined');
+console.log('nostr available:', typeof window.nostr !== 'undefined');
+
+// ===== Main Script Functions =====
+
+// Wait for nostr-tools to be loaded before running tests
+async function waitForNostrToolsAndTest() {
+    // Listen for the nostrToolsReady event
+    window.addEventListener('nostrToolsReady', () => {
+        console.log('✅ nostr-tools ready event received, running tests...');
+        runBasicFunctionalityTest();
+    });
+    
+    // Also check if it's already loaded (in case the event was fired before we set up the listener)
+    if (typeof window.nostrTools !== 'undefined' && 
+        typeof window.nostrTools.nip04 !== 'undefined' &&
+        typeof window.nostrTools.getPublicKey !== 'undefined') {
+        
+        console.log('✅ nostr-tools already loaded, running tests immediately...');
+        runBasicFunctionalityTest();
+        return;
+    }
+    
+    // Fallback: wait up to 5 seconds if event doesn't fire
+    setTimeout(() => {
+        if (typeof window.nostrTools !== 'undefined' && 
+            typeof window.nostrTools.nip04 !== 'undefined' &&
+            typeof window.nostrTools.getPublicKey !== 'undefined') {
+            
+            console.log('✅ nostr-tools loaded via timeout, running tests...');
+            runBasicFunctionalityTest();
+        } else {
+            console.error('❌ nostr-tools failed to load within timeout');
+            console.log('💡 This will prevent NWC functionality from working.');
+            console.log('💡 Check the network tab to see if the CDN script failed to load.');
+        }
+    }, 5000);
+}
+
+// Test basic functionality once nostr-tools is loaded
+function runBasicFunctionalityTest() {
+    console.log('🚀 Page loaded, testing basic functionality...');
+    
+    // Test if nostr-tools is available
+    if (typeof window.nostrTools !== 'undefined') {
+        console.log('✅ nostr-tools loaded successfully');
+        console.log('Available methods:', Object.keys(window.nostrTools));
+    } else {
+        console.error('❌ nostr-tools not available');
+    }
+    
+    // Test if PodPay stub is working
+    if (typeof window.podpay !== 'undefined') {
+        console.log('✅ PodPay stub loaded');
+    } else {
+        console.error('❌ PodPay stub not available');
+    }
+    
+    // Test if basic DOM elements are available
+    const rssInput = document.querySelector('input[type="url"]');
+    if (rssInput) {
+        console.log('✅ RSS input found');
+    } else {
+        console.error('❌ RSS input not found');
+    }
+    
+    console.log('🎯 Basic functionality test complete');
+}
+
+// Test basic functionality on page load
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Page loaded, waiting for nostr-tools...');
+    waitForNostrToolsAndTest();
+});
