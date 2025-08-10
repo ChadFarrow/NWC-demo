@@ -28,21 +28,97 @@ var nwcjs = {
         return nwcjs.bytesToHex( hash );
     },
     processNWCstring: string => {
-        if ( !string.startsWith( "nostr+walletconnect://" ) ) return alert( `Your pairing string was invalid, try one that starts with this: nostr+walletconnect://` );
-        string = string.substring( 22 );
-        var arr = string.split( "&" );
-        arr.splice( 0, 1, ...arr[ 0 ].split( "?" ) );
-        arr[ 0 ] = "wallet_pubkey=" + arr[ 0 ];
-        var arr2 = [];
-        var obj = {}
-        arr.forEach( item => arr2.push( ...item.split( "=" ) ) );
-        arr2.forEach( ( item, index ) => {if ( item === "secret" ) arr2[ index ] = "app_privkey";});
-        arr2.forEach( ( item, index ) => {if ( index % 2 ) {obj[ arr2[ index - 1 ] ] = item;}});
-        obj[ "app_pubkey" ] = nobleSecp256k1.getPublicKey( obj[ "app_privkey" ], true ).substring( 2 );
-        obj[ "relay" ] = obj[ "relay" ].replaceAll( "%3A", ":" ).replaceAll( "%2F", "/" );
-        nwcjs.nwc_infos.push( obj );
-        return obj;
+        try {
+            if ( !string.startsWith( "nostr+walletconnect://" ) ) {
+                alert( `Your pairing string was invalid, try one that starts with this: nostr+walletconnect://` );
+                return null;
+            }
+            
+            string = string.substring( 22 );
+            var arr = string.split( "&" );
+            arr.splice( 0, 1, ...arr[ 0 ].split( "?" ) );
+            arr[ 0 ] = "wallet_pubkey=" + arr[ 0 ];
+            var arr2 = [];
+            var obj = {}
+            arr.forEach( item => arr2.push( ...item.split( "=" ) ) );
+            arr2.forEach( ( item, index ) => {if ( item === "secret" ) arr2[ index ] = "app_privkey";});
+            arr2.forEach( ( item, index ) => {if ( index % 2 ) {obj[ arr2[ index - 1 ] ] = item;}});
+            
+            // Validate that we have the required fields
+            if (!obj.app_privkey) {
+                alert('Invalid NWC string: missing app_privkey (secret)');
+                console.error('❌ Missing app_privkey in NWC string:', obj);
+                return null;
+            }
+            
+            if (!obj.wallet_pubkey) {
+                alert('Invalid NWC string: missing wallet_pubkey');
+                console.error('❌ Missing wallet_pubkey in NWC string:', obj);
+                return null;
+            }
+            
+            if (!obj.relay) {
+                alert('Invalid NWC string: missing relay');
+                console.error('❌ Missing relay in NWC string:', obj);
+                return null;
+            }
+            
+            // Validate private key format and generate public key
+            try {
+                console.log('🔑 Processing private key:', obj.app_privkey.substring(0, 10) + '...');
+                obj[ "app_pubkey" ] = nobleSecp256k1.getPublicKey( obj[ "app_privkey" ], true ).substring( 2 );
+                console.log('✅ Generated public key:', obj.app_pubkey.substring(0, 10) + '...');
+            } catch (keyError) {
+                console.error('❌ Private key validation failed:', keyError);
+                alert(`Private key validation failed: ${keyError.message}\n\nPlease check your NWC connection string.`);
+                return null;
+            }
+            
+            obj[ "relay" ] = obj[ "relay" ].replaceAll( "%3A", ":" ).replaceAll( "%2F", "/" );
+            console.log('🔗 Relay URL:', obj.relay);
+            
+            nwcjs.nwc_infos.push( obj );
+            return obj;
+        } catch (error) {
+            console.error('❌ Error processing NWC string:', error);
+            alert(`Failed to process NWC string: ${error.message}`);
+            return null;
+        }
     },
+    
+    // Helper function to validate NWC connection string format
+    validateNWCString: string => {
+        if (!string) {
+            return { valid: false, error: 'No connection string provided' };
+        }
+        
+        if (!string.startsWith('nostr+walletconnect://')) {
+            return { 
+                valid: false, 
+                error: 'Connection string must start with "nostr+walletconnect://"' 
+            };
+        }
+        
+        // Check for required components
+        const requiredParams = ['secret', 'relay'];
+        const missingParams = [];
+        
+        requiredParams.forEach(param => {
+            if (!string.includes(param + '=')) {
+                missingParams.push(param);
+            }
+        });
+        
+        if (missingParams.length > 0) {
+            return { 
+                valid: false, 
+                error: `Missing required parameters: ${missingParams.join(', ')}` 
+            };
+        }
+        
+        return { valid: true };
+    },
+    
     getSignedEvent: async ( event, privateKey ) => {
         var eventData = JSON.stringify([
             0,
