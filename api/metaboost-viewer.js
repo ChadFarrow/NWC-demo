@@ -149,7 +149,24 @@ module.exports = function handler(req, res) {
                     </div>
                     <div class="field">
                         <span class="label">Payment Proof:</span>
-                        <span class="value">\${boost.paymentProof ? boost.paymentProof.substring(0, 30) + '...' : 'N/A'}</span>
+                        <span class="value">
+                            <details style="cursor: pointer;">
+                                <summary style="color: var(--accent-primary);">Click to view payment proof</summary>
+                                <pre style="background: var(--bg-primary); padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.8em; white-space: pre-wrap; word-break: break-all;">${boost.paymentProof || 'N/A'}</pre>
+                            </details>
+                        </span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Recipients:</span>
+                        <span class="value">${Array.isArray(boost.recipients) ? boost.recipients.join(', ') : boost.recipients || 'N/A'}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Feed URL:</span>
+                        <span class="value">${boost.feedUrl || 'N/A'}</span>
+                    </div>
+                    <div class="field">
+                        <span class="label">Episode GUID:</span>
+                        <span class="value">${boost.episodeGuid || 'N/A'}</span>
                     </div>
                 </div>
             \`).join('');

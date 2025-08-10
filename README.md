@@ -1,122 +1,166 @@
 # V4V Lightning Payment Tester
 
-A tool for testing Lightning Network payments and podcast value splits with **PodPay integration**.
+A comprehensive testing environment for Value for Value (V4V) Lightning Network payments with metaBoost integration and Nostr Wallet Connect (NWC) support.
 
-## 🚀 New: PodPay Integration
+## 🚀 Features
 
-This project now includes a local implementation of the `@fountain/podpay` library functionality, providing enhanced Podcasting 2.0 payment handling:
+### Core Functionality
+- **Lightning Payment Testing** - Test various Lightning payment methods
+- **MetaBoost Integration** - Send and receive metaBoosts with payment proofs
+- **NWC Support** - Full Nostr Wallet Connect integration for real payments
+- **RSS Feed Parsing** - Parse podcast feeds to extract value blocks
+- **Payment Proof Generation** - Generate cryptographic proof of payments
 
-## 🔑 NWC (Nostr Wallet Connect) Integration
+### Payment Methods
+- **Keysend Payments** - Direct node-to-node payments
+- **Invoice Payments** - Standard Lightning invoice payments
+- **HODL Invoices** - Time-locked payments with preimage control
 
-This project supports **direct wallet communication** using NWC strings without requiring browser extensions:
+## 🛠️ Setup
 
-- **No Browser Extensions**: NWC strings work independently using local encryption
-- **Direct Wallet Communication**: Communicates directly with your Lightning wallet via Nostr relays
-- **Secure**: Uses NIP-04 encryption with the secret key from your NWC string
-- **Universal**: Works with any NWC-compatible wallet (Alby, Zeus, etc.)
+### Prerequisites
+- Node.js (v16 or higher)
+- A Lightning node with NWC support
+- Nostr Wallet Connect compatible wallet
 
-### How NWC Works
-1. **Parse NWC String**: Extract wallet pubkey, relay URL, and secret key
-2. **Local Encryption**: Use local nostr-tools for NIP-04 encryption
-3. **Direct Communication**: Send encrypted requests directly to your wallet via Nostr relays
-4. **No Middleware**: Bypasses browser extensions entirely
+### Installation
+1. Clone the repository
+2. Install dependencies: `npm install`
+3. Start the server: `npm start`
 
-### Technical Implementation
-- **nwcjs.js**: Custom library for NWC string parsing and wallet communication
-- **nostr-tools**: Local encryption library for NIP-04 message encryption
-- **WebSocket**: Direct communication with Nostr relays
-- **NIP-47**: Lightning wallet protocol implementation
+### Environment Setup
+- Configure your NWC connection string
+- Set up your Lightning node
+- Configure relay endpoints
 
-### Why NWC Strings Are Better
-- **Privacy**: No browser extension can intercept your wallet communications
-- **Reliability**: Works even if browser extensions are disabled or blocked
-- **Portability**: NWC strings can be used across different devices and browsers
-- **Security**: Direct end-to-end encryption between your app and wallet
+## 📱 Usage
 
-- **Enhanced Value Block Parsing**: Better parsing of podcast value blocks using PodPay
-- **Smart Payment Splits**: Automatic calculation of payment splits based on recipient configuration
-- **metaBoost Generation**: Generate proper metaBoost metadata for V4V payments
-- **Validation Tools**: Lightning address and node pubkey validation
-- **Utility Functions**: Sats/BTC conversion and formatting helpers
+### 1. Connect Your Wallet
+1. Open `v4v_lightning_tester.html`
+2. Enter your NWC connection string
+3. Click "Connect Wallet" to verify connection
 
-### PodPay Features
+### 2. Parse RSS Feeds
+1. Enter an RSS feed URL containing value blocks
+2. Click "Parse Value Block" to extract recipients
+3. Select recipients from the parsed results
 
-- Parse RSS feeds with enhanced value block detection
-- Calculate payment splits automatically
-- Generate metaBoost metadata for payment tracking
-- Validate Lightning addresses and node pubkeys
-- Support for multiple recipient types and split methods
+### 3. Send Payments
+1. Enter payment amount and message
+2. Select recipients from parsed value blocks
+3. Click "Send Normal Boost" to execute payment
+4. Payment proof is automatically generated and submitted
 
-## Feed URL
-https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/feed.xml
+### 4. View MetaBoosts
+- Visit `/api/metaboost-viewer` to see all received boosts
+- Use `/public/test-metaboost.html` for testing metaBoost submission
 
-## Episodes
-- LNURL Testing Episode
+## 🔧 API Endpoints
 
-## Testing
-This feed is designed for testing LNURL payments in podcast apps. Each episode has value blocks that support Lightning payments.
+### MetaBoost API
+- `POST /api/metaboost` - Submit a new metaBoost
+- `GET /api/metaboost-viewer` - View metaBoost interface
+- `POST /api/metaboost-viewer` - Manage metaBoost data
 
-## Value Blocks
-The feed includes value blocks with the following recipients:
+### NWC Integration
+- Full Nostr Wallet Connect protocol support
+- Encrypted communication with Lightning wallets
+- Real-time payment status updates
 
-### Lightning Addresses
-- chadf@getalby.com
-- chadf@btcpay.podtards.com
-- eagerheron90@zeusnuts.com
-- cobaltfly1@primal.net
+## 📊 MetaBoost Specification
 
-### Node Pubkeys (Keysend)
-- 032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51
+Each metaBoost includes:
+- **Amount** - Payment amount in sats
+- **Payment Proof** - Cryptographic proof of payment
+- **Message** - User message or comment
+- **Recipients** - Array of payment destinations
+- **Feed URL** - Source podcast RSS feed
+- **Episode GUID** - Unique episode identifier
+- **Timestamp** - Payment timestamp
+- **App Name** - Sending application identifier
+- **Sender Name** - User identifier
 
-## Setup
-1. Clone this repository
-2. Customize the `config` object in `customize-feed.js`
-3. Run `node customize-feed.js` to generate updated feed
-4. Commit and push changes
-
-## Testing Apps
-- **Fountain**: Add feed URL to test Lightning payments
-- **Breez**: Test LNURL integration
-- **Podverse**: Check value block parsing
-- **Castamatic**: Test Lightning address support
-
-## Customization
-Edit the `config` object in `customize-feed.js` to:
-- Change Lightning addresses
-- Add/remove node pubkeys
-- Modify episode content
-- Update personal information
-
-Then run `node customize-feed.js` to regenerate the feed.
-
-## PodPay Usage
-
-### Basic Usage
-```javascript
-// Parse value blocks with PodPay
-await parseValueBlocksWithPodPay();
-
-// Calculate payment splits
-calculateSplitsWithPodPay();
-
-// Generate metaBoost metadata
-generateMetaBoostWithPodPay();
-
-// Test library functionality
-testPodPayLibrary();
+### Payment Proof Format
+```json
+{
+  "type": "keysend",
+  "destination": "node_pubkey",
+  "amount_msat": 100000,
+  "amount_sats": 100,
+  "message": "User message",
+  "timestamp": "2025-01-27T12:00:00.000Z",
+  "payment_hash": "payment_hash_hex",
+  "preimage": "preimage_hex",
+  "success": true
+}
 ```
 
-### Advanced Features
-- **Automatic Split Calculation**: PodPay automatically calculates payment amounts based on recipient splits
-- **metaBoost Generation**: Creates proper metadata for payment tracking
-- **Validation**: Ensures Lightning addresses and node pubkeys are properly formatted
-- **Utility Functions**: Easy conversion between sats and BTC
+## 🧪 Testing
 
----
+### Test Pages
+- **Main Tester**: `v4v_lightning_tester.html` - Full payment testing interface
+- **MetaBoost Test**: `public/test-metaboost.html` - MetaBoost submission testing
+- **Viewer**: `/api/metaboost-viewer` - MetaBoost display interface
 
-## Useful Podcasting 2.0 & V4V Ecosystem Links
+### Test Scenarios
+1. **Connection Test** - Verify NWC wallet connection
+2. **Keysend Test** - Test minimal payment (1 sat)
+3. **MetaBoost Test** - Submit test metaBoost with payment proof
+4. **RSS Parsing** - Parse test feeds for value blocks
 
-- [@fountain/podpay (JSR)](https://jsr.io/@fountain/podpay) — JavaScript/TypeScript library for Podcasting 2.0 payments and splits *(Note: Currently implemented locally)*
-- [Podcastindex-org/podcast-namespace Discussion #676: <podcast:metaBoost> proposal](https://github.com/Podcastindex-org/podcast-namespace/discussions/676) — Proposal for a new tag and API for boost/metadata
-- [thebells1111/thesplitbox](https://github.com/thebells1111/thesplitbox) — Open-source value split and boostagram processor
-- [podtoo/boostagramLIVE](https://github.com/podtoo/boostagramLIVE) — Real-time boostagram display and integration
+## 🔒 Security Features
+
+- **Encrypted Communication** - All NWC traffic is encrypted
+- **Payment Verification** - Cryptographic proof of payment completion
+- **Input Validation** - Comprehensive validation of all inputs
+- **Error Handling** - Graceful error handling and user feedback
+
+## 🚨 Troubleshooting
+
+### Common Issues
+1. **NWC Connection Failed**
+   - Verify connection string format
+   - Check wallet compatibility
+   - Ensure relay is accessible
+
+2. **Payment Failed**
+   - Verify sufficient balance
+   - Check destination node connectivity
+   - Review payment amount limits
+
+3. **MetaBoost Submission Error**
+   - Verify API endpoint accessibility
+   - Check payment proof format
+   - Ensure all required fields are present
+
+### Debug Tools
+- **Debug NWC** - Test wallet connection and balance
+- **Test Keysend** - Verify payment functionality
+- **Console Logging** - Detailed operation logging
+
+## 📈 Future Enhancements
+
+- [ ] Multi-recipient payment splitting
+- [ ] Advanced payment proof verification
+- [ ] Batch metaBoost processing
+- [ ] Payment analytics and reporting
+- [ ] Integration with podcast platforms
+
+## 🤝 Contributing
+
+Contributions are welcome! Please:
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Submit a pull request
+
+## 📄 License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## 🙏 Acknowledgments
+
+- Lightning Network community
+- Nostr Wallet Connect developers
+- MetaBoost specification contributors
+- Value for Value podcasting community

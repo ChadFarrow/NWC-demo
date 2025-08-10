@@ -3573,30 +3573,218 @@ if (typeof window.nostrTools === 'undefined') {
     };
 }
 
-// ===== Button Click Handler =====
-window.handleMetaBoostSubmit = function(event) {
+// ===== Integrated MetaBoost Payment Handler =====
+window.handleMetaBoostSubmit = async function(event) {
     console.log('🚀 handleMetaBoostSubmit called via onclick!');
     event.preventDefault();
     event.stopPropagation();
 
-    // Get form data directly from input elements
-    const amount = document.getElementById('payment-amount').value;
+    // Get form data
+    const amount = parseInt(document.getElementById('payment-amount').value);
     const message = document.getElementById('payment-message').value;
     const paymentProof = document.getElementById('payment-proof').value;
 
-    // Validate required fields
-    if (!amount || !paymentProof) {
-        alert('Amount and Payment Proof are required');
-        return false;
+    // Check if we already have a payment proof (user manually entered one)
+    if (paymentProof) {
+        console.log('📝 Payment proof already provided, sending metaBoost metadata...');
+        await sendMetaBoostWithExistingProof(amount, message, paymentProof);
+        return;
     }
 
+    // No payment proof - we need to make the actual payment first
+    console.log('💰 No payment proof found, initiating Lightning payment...');
+    await makeMetaBoostPayment(amount, message);
+};
+
+// Make actual Lightning payment and capture proof for metaBoost
+async function makeMetaBoostPayment(amount, message) {
+    console.log('🚀 Starting integrated metaBoost payment flow...');
+    
+    // Get NWC connection
+    const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+    const nwcString = nwcInput.value.trim();
+    
+    if (!nwcString) {
+        alert('Please connect your wallet (enter NWC string) first.');
+        return;
+    }
+
+    // Get selected recipients
+    const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+    const selectedOptions = Array.from(recipientCheckboxes);
+
+    if (selectedOptions.length === 0) {
+        alert('Please select at least one recipient.');
+        return;
+    }
+
+    // Update UI to show payment in progress
+    const submitBtn = document.querySelector('#payment-form-container .btn.btn-primary');
+    const originalText = submitBtn ? submitBtn.innerHTML : 'Send metaBoost Metadata';
+    
+    if (submitBtn) {
+        setButtonFeedback(submitBtn, '⚡ Making Lightning Payment...', null, null, false);
+    }
+
+    try {
+        // Test wallet connection first
+        console.log('🔍 Testing wallet connection...');
+        const url = new URL(nwcString.replace('nostr+walletconnect://', 'https://'));
+        const relay = url.searchParams.get('relay');
+        
+        if (!relay) {
+            throw new Error('No relay found in NWC string');
+        }
+
+        // Test relay connectivity
+        const relayTest = await testRelayConnectionInternal(relay);
+        if (!relayTest.success) {
+            throw new Error(`Relay connection failed: ${relayTest.error}`);
+        }
+
+        // Test wallet capabilities
+        const capabilities = await testWalletCapabilities(nwcString);
+        if (!capabilities.methods.includes('pay_keysend')) {
+            throw new Error('Your wallet does not support pay_keysend method');
+        }
+
+        console.log('✅ Wallet connection test passed');
+
+        // Calculate splits and make payments
+        let totalSplit = 0;
+        selectedOptions.forEach(opt => {
+            const split = parseFloat(opt.getAttribute('data-split')) || 0;
+            totalSplit += split;
+        });
+        if (totalSplit === 0) totalSplit = selectedOptions.length;
+
+        let paymentResults = [];
+        let paymentProofs = [];
+
+        // Process each recipient
+        for (const opt of selectedOptions) {
+            const split = parseFloat(opt.getAttribute('data-split')) || 1;
+            const recipient = opt.value;
+            const recipientAmount = Math.round(amount * (split / totalSplit));
+            
+            if (!recipient || !recipientAmount || recipientAmount < 1) {
+                console.error('Invalid recipient or amount, skipping:', recipient, recipientAmount);
+                continue;
+            }
+
+            console.log(`\n=== Processing payment for ${recipient} ===`);
+            console.log(`Split: ${split}%, Amount: ${recipientAmount} sats`);
+
+            try {
+                const isLightningAddress = recipient.includes('@');
+                const isNodePubkey = recipient.match(/^[0-9a-fA-F]{66}$/);
+
+                if (isLightningAddress) {
+                    console.log('📧 Lightning address detected - using LNURL payment...');
+                    const lnurlResult = await sendLNURLPayment(recipient, recipientAmount, message);
+                    if (lnurlResult.success) {
+                        const invoiceResult = await payInvoiceWithNWC(nwcString, lnurlResult.invoice);
+                        if (invoiceResult.success) {
+                            console.log('✅ LNURL payment successful! Payment hash:', invoiceResult.paymentHash);
+                            paymentResults.push({ recipient, amount: recipientAmount, success: true });
+                            paymentProofs.push({
+                                type: 'invoice',
+                                recipient: recipient,
+                                amount: recipientAmount,
+                                paymentHash: invoiceResult.paymentHash,
+                                preimage: invoiceResult.preimage
+                            });
+                        } else {
+                            throw new Error(`Invoice payment failed: ${invoiceResult.error}`);
+                        }
+                    } else {
+                        throw new Error(`LNURL payment failed: ${lnurlResult.error}`);
+                    }
+                } else if (isNodePubkey) {
+                    console.log('🔑 Node pubkey detected - using keysend payment...');
+                    const keysendResult = await sendKeysendWithNWC(nwcString, recipient, recipientAmount, message);
+                    if (keysendResult.success) {
+                        console.log('✅ Keysend payment successful! Preimage:', keysendResult.preimage);
+                        paymentResults.push({ recipient, amount: recipientAmount, success: true });
+                        paymentProofs.push({
+                            type: 'keysend',
+                            recipient: recipient,
+                            amount: recipientAmount,
+                            preimage: keysendResult.preimage
+                        });
+                    } else {
+                        throw new Error(`Keysend payment failed: ${keysendResult.error}`);
+                    }
+                } else {
+                    throw new Error(`Invalid recipient format: ${recipient}`);
+                }
+            } catch (error) {
+                console.error(`❌ Payment failed for ${recipient}:`, error.message);
+                paymentResults.push({ recipient, amount: recipientAmount, success: false, error: error.message });
+            }
+        }
+
+        // Check if we have any successful payments
+        const successfulPayments = paymentResults.filter(r => r.success);
+        if (successfulPayments.length === 0) {
+            throw new Error('All payments failed. Please check your wallet and try again.');
+        }
+
+        // Show payment summary
+        let summary = 'Payment Results:\n';
+        paymentResults.forEach(r => {
+            summary += `${r.success ? '✅' : '❌'} ${r.recipient} - ${r.amount} sats${r.error ? ' (' + r.error + ')' : ''}\n`;
+        });
+        console.log('=== Payment Summary ===');
+        console.log(summary);
+
+        // Auto-fill payment proof field with successful payment data
+        if (paymentProofs.length > 0) {
+            const primaryProof = paymentProofs[0];
+            let proofText = '';
+            
+            if (primaryProof.type === 'keysend') {
+                proofText = `keysend:${primaryProof.preimage}`;
+            } else if (primaryProof.type === 'invoice') {
+                proofText = `invoice:${primaryProof.paymentHash}`;
+            }
+            
+            if (proofText) {
+                document.getElementById('payment-proof').value = proofText;
+                console.log('✅ Auto-filled payment proof:', proofText);
+            }
+        }
+
+        // Update button to show success
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, '✅ Payment Successful! Sending metaBoost...', 2000, 'Send metaBoost Metadata');
+        }
+
+        // Now send the metaBoost metadata
+        console.log('📤 Sending metaBoost metadata with payment proof...');
+        await sendMetaBoostWithExistingProof(amount, message, document.getElementById('payment-proof').value);
+
+    } catch (error) {
+        console.error('❌ MetaBoost payment failed:', error);
+        if (submitBtn) {
+            setButtonFeedback(submitBtn, `❌ Payment Failed: ${error.message}`, 5000, originalText);
+        } else {
+            alert(`Payment failed: ${error.message}`);
+        }
+    }
+}
+
+// Send metaBoost with existing payment proof
+async function sendMetaBoostWithExistingProof(amount, message, paymentProof) {
+    console.log('📤 Sending metaBoost with existing payment proof...');
+    
     // Get selected recipients
     const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
     const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
 
     if (recipients.length === 0) {
-        alert('Please select at least one recipient');
-        return false;
+        alert('Please select at least one recipient.');
+        return;
     }
 
     // Get podcast and episode info from parsed feed
@@ -3608,7 +3796,7 @@ window.handleMetaBoostSubmit = function(event) {
     // Prepare metaBoost data following the spec
     const metaBoostData = {
         // Required fields
-        amount: parseInt(amount),
+        amount: amount,
         paymentProof: paymentProof,
 
         // Boost metadata
@@ -3617,8 +3805,8 @@ window.handleMetaBoostSubmit = function(event) {
         boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
 
         // Value amounts (in millisats for compatibility)
-        value_msat: parseInt(amount) * 1000,
-        value_msat_total: parseInt(amount) * 1000,
+        value_msat: amount * 1000,
+        value_msat_total: amount * 1000,
 
         // Recipients and splits
         recipients: recipients,
@@ -3647,10 +3835,9 @@ window.handleMetaBoostSubmit = function(event) {
 
     // Call the sendMetaBoostMetadata function with the data
     if (typeof window.sendMetaBoostMetadata === 'function') {
-        console.log('📤 Calling sendMetaBoostMetadata from button click...');
-        // Create a synthetic event object for compatibility
+        console.log('📤 Calling sendMetaBoostMetadata...');
         const syntheticEvent = {
-            target: { reset: () => {} }, // Mock form reset method
+            target: { reset: () => {} },
             preventDefault: () => {},
             stopPropagation: () => {}
         };
@@ -3659,7 +3846,7 @@ window.handleMetaBoostSubmit = function(event) {
         console.error('❌ sendMetaBoostMetadata function not available!');
         alert('MetaBoost function not available - please refresh the page');
     }
-};
+}
 
 // ===== Main Script Functions =====
 

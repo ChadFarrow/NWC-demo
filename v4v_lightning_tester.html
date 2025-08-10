@@ -406,6 +406,9 @@
                 <button class="btn btn-success" onclick="testKeysend()">
                     🔑 Test Keysend
                 </button>
+                <button class="btn btn-warning" onclick="testCurrentState()">
+                    🧪 Test State
+                </button>
             </div>
         </div>
 
@@ -458,6 +461,11 @@
         </div>
     </div>
 
+    <!-- NWC Dependencies -->
+    <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
+    <script src="https://bundle.run/bech32@2.0.0"></script>
+    <script src="nwcjs.js"></script>
+
     <script>
         function toggleTheme() {
             const toggle = document.querySelector('.theme-toggle');
@@ -471,20 +479,132 @@
             }, 300);
         }
 
-        function parseValueBlock() {
+        async function parseValueBlock() {
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '⚡ Parsing...';
             btn.disabled = true;
             
-            // Simulate parsing process
-            setTimeout(() => {
+            try {
+                const rssInput = document.querySelector('input[type="url"]');
+                const rssUrl = rssInput.value.trim();
+                
+                if (!rssUrl) {
+                    throw new Error('Please enter an RSS feed URL first');
+                }
+                
+                // Fetch and parse the RSS feed
+                const response = await fetch(rssUrl);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch RSS feed: ${response.statusText}`);
+                }
+                
+                const xmlText = await response.text();
+                
+                // Simple XML parsing to extract value blocks
+                const valueBlocks = [];
+                const parser = new DOMParser();
+                const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                
+                // Look for value blocks in the RSS feed
+                const items = xmlDoc.querySelectorAll('item');
+                items.forEach((item, index) => {
+                    const title = item.querySelector('title')?.textContent || '';
+                    const description = item.querySelector('description')?.textContent || '';
+                    const guid = item.querySelector('guid')?.textContent || `item_${index}`;
+                    
+                    // Extract lightning addresses and payment info
+                    const lightningMatches = description.match(/⚡\s*([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g);
+                    const bitcoinMatches = description.match(/₿\s*([a-zA-Z0-9]{26,35})/g);
+                    
+                    if (lightningMatches || bitcoinMatches) {
+                        valueBlocks.push({
+                            title: title.substring(0, 50) + (title.length > 50 ? '...' : ''),
+                            guid: guid,
+                            lightning: lightningMatches || [],
+                            bitcoin: bitcoinMatches || [],
+                            description: description.substring(0, 100) + (description.length > 100 ? '...' : '')
+                        });
+                    }
+                });
+                
+                if (valueBlocks.length === 0) {
+                    throw new Error('No value blocks found in this RSS feed');
+                }
+                
+                // Update the recipient checkboxes
+                updateRecipientCheckboxes(valueBlocks);
+                
+                // Store the parsed data for later use
+                window.parsedValueBlocks = valueBlocks;
+                
                 btn.innerHTML = '✅ Parsed Successfully';
+                console.log('📡 Parsed value blocks:', valueBlocks);
+                
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
                 }, 2000);
-            }, 1500);
+                
+            } catch (error) {
+                console.error('❌ Parse error:', error);
+                btn.innerHTML = '❌ Parse Failed';
+                alert('Parse error: ' + error.message);
+                
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 2000);
+            }
+        }
+        
+        function updateRecipientCheckboxes(valueBlocks) {
+            const container = document.getElementById('recipient-checkboxes');
+            
+            if (valueBlocks.length === 0) {
+                container.innerHTML = '<div style="color: var(--text-muted); font-style: italic;">No value blocks found</div>';
+                return;
+            }
+            
+            let html = '<div style="margin-bottom: 1rem; color: var(--text-secondary);">Select recipients:</div>';
+            
+            valueBlocks.forEach((block, index) => {
+                html += `
+                    <div class="recipient-block" style="margin-bottom: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
+                        <div style="font-weight: bold; margin-bottom: 0.5rem;">${block.title}</div>
+                        <div style="font-size: 0.9em; color: var(--text-muted); margin-bottom: 0.5rem;">${block.description}</div>
+                        <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
+                `;
+                
+                // Add lightning address checkboxes
+                block.lightning.forEach(addr => {
+                    const cleanAddr = addr.replace('⚡', '').trim();
+                    html += `
+                        <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                            <input type="checkbox" value="${cleanAddr}" data-type="lightning" data-block="${index}">
+                            <span style="color: var(--accent-primary);">⚡ ${cleanAddr}</span>
+                        </label>
+                    `;
+                });
+                
+                // Add bitcoin address checkboxes
+                block.bitcoin.forEach(addr => {
+                    const cleanAddr = addr.replace('₿', '').trim();
+                    html += `
+                        <label style="display: flex; align-items: center; gap: 0.25rem; cursor: pointer;">
+                            <input type="checkbox" value="${cleanAddr}" data-type="bitcoin" data-block="${index}">
+                            <span style="color: var(--accent-secondary);">₿ ${cleanAddr}</span>
+                        </label>
+                    `;
+                });
+                
+                html += `
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
         }
 
         function clearSettings() {
@@ -537,6 +657,117 @@
             }, 2000);
         }
 
+        async function debugNWCConnection() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '🔧 Testing...';
+            btn.disabled = true;
+            
+            try {
+                const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                const nwcString = nwcInput.value.trim();
+                
+                if (!nwcString) {
+                    throw new Error('Please enter an NWC connection string first');
+                }
+                
+                // Parse NWC connection string
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                if (!nwcInfo) {
+                    throw new Error('Invalid NWC connection string');
+                }
+                
+                console.log('🔗 NWC Info parsed:', nwcInfo);
+                
+                // Test wallet connection
+                btn.innerHTML = '🔍 Testing wallet connection...';
+                const walletInfo = await nwcjs.getInfo(nwcInfo, 10);
+                
+                if (!walletInfo || walletInfo.error) {
+                    throw new Error('Wallet connection failed: ' + (walletInfo?.error?.message || 'Unknown error'));
+                }
+                
+                console.log('✅ Wallet info:', walletInfo);
+                
+                // Test balance retrieval
+                btn.innerHTML = '💰 Testing balance...';
+                const balance = await nwcjs.getBalance(nwcInfo, 10);
+                
+                if (!balance || balance.error) {
+                    throw new Error('Balance check failed: ' + (balance?.error?.message || 'Unknown error'));
+                }
+                
+                const balanceSats = Math.floor(balance.result.balance / 1000);
+                console.log('✅ Balance:', balanceSats, 'sats');
+                
+                // Show success
+                btn.innerHTML = '✅ Connected';
+                alert(`🔗 NWC Connection Successful!\n\nWallet: ${walletInfo.result.alias || 'Unknown'}\nBalance: ${balanceSats} sats\nRelay: ${nwcInfo.relay}\n\nYou can now send payments!`);
+                
+            } catch (error) {
+                console.error('❌ NWC Debug error:', error);
+                btn.innerHTML = '❌ Failed';
+                alert('NWC Debug error: ' + error.message);
+            } finally {
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            }
+        }
+        
+        async function testKeysend() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '🔑 Testing...';
+            btn.disabled = true;
+            
+            try {
+                const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                const nwcString = nwcInput.value.trim();
+                
+                if (!nwcString) {
+                    throw new Error('Please enter an NWC connection string first');
+                }
+                
+                // Parse NWC connection string
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                if (!nwcInfo) {
+                    throw new Error('Invalid NWC connection string');
+                }
+                
+                // Test with a minimal amount (1 sat)
+                const testAmount = 1;
+                const testDestination = '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619';
+                const testMessage = 'Test keysend from V4V Lightning Tester';
+                
+                btn.innerHTML = '🔑 Sending test...';
+                console.log('🧪 Testing keysend with:', { amount: testAmount, destination: testDestination, message: testMessage });
+                
+                const paymentResult = await nwcjs.payKeysend(nwcInfo, testDestination, testAmount, testMessage, 15);
+                
+                if (!paymentResult || paymentResult.error) {
+                    throw new Error('Test keysend failed: ' + (paymentResult?.error?.message || 'Unknown error'));
+                }
+                
+                console.log('✅ Test keysend successful:', paymentResult);
+                
+                // Show success
+                btn.innerHTML = '✅ Test Passed';
+                alert(`🔑 Keysend Test Successful!\n\nAmount: ${testAmount} sat\nDestination: ${testDestination.substring(0, 16)}...\nPayment Hash: ${paymentResult.result?.payment_hash || 'N/A'}\n\nYour NWC setup is working correctly!`);
+                
+            } catch (error) {
+                console.error('❌ Keysend test error:', error);
+                btn.innerHTML = '❌ Test Failed';
+                alert('Keysend test error: ' + error.message);
+            } finally {
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            }
+        }
+
         // Add some interactive effects
         document.querySelectorAll('.card').forEach(card => {
             card.addEventListener('mouseenter', () => {
@@ -564,41 +795,201 @@
             }
         });
 
-        // Simplified sendNormalBoost function for v4v_lightning_tester.html
+        // Real sendNormalBoost function with NWC integration
         async function sendNormalBoost() {
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '⚡ Sending...';
             btn.disabled = true;
             
-            const amount = parseInt(document.getElementById('payment-amount').value, 10);
-            const message = document.getElementById('payment-message').value;
-            const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
-            const nwcString = nwcInput.value.trim();
-            
-            if (!nwcString) {
-                alert('Please connect your wallet (enter NWC string) first.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                return;
-            }
-            
-            if (!amount || amount < 1) {
-                alert('Please enter a valid amount.');
-                btn.innerHTML = originalText;
-                btn.disabled = false;
-                return;
-            }
-            
-            // Simulate payment process
-            setTimeout(() => {
-                btn.innerHTML = '✅ Payment Sent';
-                alert(`Normal Boost sent!\nAmount: ${amount} sats\nMessage: ${message}\n\nNote: This is a simplified version. For full NWC functionality, use the main app.`);
+            try {
+                const amount = parseInt(document.getElementById('payment-amount').value, 10);
+                const message = document.getElementById('payment-message').value;
+                const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                const nwcString = nwcInput.value.trim();
+                
+                if (!nwcString) {
+                    throw new Error('Please connect your wallet (enter NWC string) first.');
+                }
+                
+                if (!amount || amount < 1) {
+                    throw new Error('Please enter a valid amount.');
+                }
+                
+                // Parse NWC connection string
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                if (!nwcInfo) {
+                    throw new Error('Invalid NWC connection string');
+                }
+                
+                console.log('🔗 NWC Connected:', { 
+                    wallet_pubkey: nwcInfo.wallet_pubkey.substring(0, 16) + '...',
+                    relay: nwcInfo.relay 
+                });
+                
+                // Get wallet info to verify connection
+                btn.innerHTML = '🔍 Verifying wallet...';
+                const walletInfo = await nwcjs.getInfo(nwcInfo, 10);
+                if (!walletInfo || walletInfo.error) {
+                    throw new Error('Failed to connect to wallet: ' + (walletInfo?.error?.message || 'Unknown error'));
+                }
+                
+                console.log('✅ Wallet connected:', walletInfo);
+                
+                // Get balance to verify sufficient funds
+                btn.innerHTML = '💰 Checking balance...';
+                const balance = await nwcjs.getBalance(nwcInfo, 10);
+                if (!balance || balance.error) {
+                    throw new Error('Failed to get balance: ' + (balance?.error?.message || 'Unknown error'));
+                }
+                
+                const balanceSats = Math.floor(balance.result.balance / 1000);
+                if (balanceSats < amount) {
+                    throw new Error(`Insufficient balance: ${balanceSats} sats available, ${amount} sats requested`);
+                }
+                
+                console.log('💰 Balance:', balanceSats, 'sats');
+                
+                // Get selected recipients from the parsed value blocks
+                const selectedRecipients = [];
+                const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+                
+                if (recipientCheckboxes.length === 0) {
+                    throw new Error('Please select at least one recipient from the parsed value blocks');
+                }
+                
+                recipientCheckboxes.forEach(checkbox => {
+                    const recipient = checkbox.value;
+                    const type = checkbox.dataset.type;
+                    const blockIndex = parseInt(checkbox.dataset.block);
+                    const block = window.parsedValueBlocks[blockIndex];
+                    
+                    selectedRecipients.push({
+                        address: recipient,
+                        type: type,
+                        block: block
+                    });
+                });
+                
+                console.log('🎯 Selected recipients:', selectedRecipients);
+                
+                // For now, we'll send to the first selected recipient
+                // In a real implementation, you might want to split the payment or send to all
+                const primaryRecipient = selectedRecipients[0];
+                const destination = primaryRecipient.address;
+                
+                btn.innerHTML = '⚡ Sending payment...';
+                console.log('🚀 Sending keysend payment:', { amount, destination, message, recipientType: primaryRecipient.type });
+                
+                // Send the keysend payment
+                const paymentResult = await nwcjs.payKeysend(nwcInfo, destination, amount, message, 15);
+                
+                if (!paymentResult || paymentResult.error) {
+                    throw new Error('Payment failed: ' + (paymentResult?.error?.message || 'Unknown error'));
+                }
+                
+                console.log('✅ Payment successful:', paymentResult);
+                
+                // Generate payment proof for metaBoost
+                const paymentProof = {
+                    type: 'keysend',
+                    destination: destination,
+                    recipient_type: primaryRecipient.type,
+                    amount_msat: amount * 1000,
+                    amount_sats: amount,
+                    message: message,
+                    timestamp: new Date().toISOString(),
+                    payment_hash: paymentResult.result?.payment_hash || `proof_${Date.now()}`,
+                    preimage: paymentResult.result?.preimage || null,
+                    success: true,
+                    block_info: {
+                        title: primaryRecipient.block.title,
+                        guid: primaryRecipient.block.guid
+                    }
+                };
+                
+                // Submit metaBoost with payment proof
+                btn.innerHTML = '📤 Submitting metaBoost...';
+                const metaBoostData = {
+                    amount: amount,
+                    paymentProof: JSON.stringify(paymentProof),
+                    message: message,
+                    recipients: selectedRecipients.map(r => r.address),
+                    feedUrl: document.querySelector('input[type="url"]').value,
+                    episodeGuid: primaryRecipient.block.guid,
+                    timestamp: new Date().toISOString(),
+                    appName: 'V4V Lightning Tester',
+                    senderName: 'Anonymous',
+                    boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    action: 'boost',
+                    podcast: primaryRecipient.block.title
+                };
+                
+                const metaBoostResponse = await fetch('/api/metaboost', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(metaBoostData)
+                });
+                
+                if (!metaBoostResponse.ok) {
+                    throw new Error('Failed to submit metaBoost: ' + metaBoostResponse.statusText);
+                }
+                
+                const metaBoostResult = await metaBoostResponse.json();
+                console.log('✅ MetaBoost submitted:', metaBoostResult);
+                
+                // Show success
+                btn.innerHTML = '✅ Success!';
+                alert(`🎉 Payment and MetaBoost successful!\n\nAmount: ${amount} sats\nMessage: ${message}\nPayment Hash: ${paymentProof.payment_hash}\nBoost ID: ${metaBoostResult.boostId}\n\nView your boost at: /api/metaboost-viewer`);
+                
+                // Reset form
+                document.getElementById('payment-amount').value = '';
+                document.getElementById('payment-message').value = '';
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                btn.innerHTML = '❌ Failed';
+                alert('Error: ' + error.message);
+            } finally {
                 setTimeout(() => {
                     btn.innerHTML = originalText;
                     btn.disabled = false;
-                }, 2000);
-            }, 2000);
+                }, 3000);
+            }
+        }
+        
+        // Simple test function to verify the current state
+        function testCurrentState() {
+            console.log('🧪 Testing current state...');
+            
+            // Check form elements
+            const amountInput = document.getElementById('payment-amount');
+            const messageInput = document.getElementById('payment-message');
+            const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+            const rssInput = document.querySelector('input[type="url"]');
+            
+            console.log('Form elements found:', {
+                amountInput: amountInput ? '✅' : '❌',
+                messageInput: messageInput ? '✅' : '❌',
+                nwcInput: nwcInput ? '✅' : '❌',
+                rssInput: rssInput ? '✅' : '❌'
+            });
+            
+            // Check current values
+            console.log('Current values:', {
+                amount: amountInput?.value || 'not set',
+                message: messageInput?.value || 'not set',
+                nwc: nwcInput?.value || 'not set',
+                rss: rssInput?.value || 'not set'
+            });
+            
+            // Check if nwcjs is loaded
+            console.log('NWC library loaded:', typeof nwcjs !== 'undefined' ? '✅' : '❌');
+            
+            // Check if parsed value blocks exist
+            console.log('Parsed value blocks:', window.parsedValueBlocks || 'none');
+            
+            alert('Check console for current state information');
         }
     </script>
 </body>
