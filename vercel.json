@@ -5,6 +5,8 @@
     }
   },
   "rewrites": [
-    { "source": "/", "destination": "/public/v4v_lightning_tester.html" }
+    { "source": "/", "destination": "/public/v4v_lightning_tester.html" },
+    { "source": "/dashboard.html", "destination": "/dashboard.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" }
   ]
 }
