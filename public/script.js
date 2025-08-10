@@ -2159,6 +2159,11 @@ window.sendNormalBoost = async function sendNormalBoost() {
     let summary = 'Normal Boost Results:\n';
     results.forEach(r => {
         summary += `${r.success ? '✅' : '❌'} ${r.recipient} - ${r.amount} sats${r.error ? ' (' + r.error + ')' : ''}\n`;
+        
+        // Add connectivity info for failed keysend payments
+        if (!r.success && r.connectivity && r.recipient.match(/^[0-9a-fA-F]{66}$/)) {
+            summary += `   🔍 Connectivity: ${r.connectivity.message}\n`;
+        }
     });
     console.log('=== Final Summary ===');
     console.log(summary);
@@ -2405,8 +2410,18 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 message: message || ''
             });
             
-            // Use the new payKeysend method
-            const result = await nwcjs.payKeysend(nwcInfo, destination, amount * 1000, message || '', 20);
+            // Use multi_pay_keysend since pay_keysend has issues with Alby
+            console.log('🔧 Using multi_pay_keysend for single keysend payment');
+            const keysendArray = [{
+                pubkey: destination,
+                amount: amount * 1000, // msat
+                tlv_records: [{
+                    type: 34349334,
+                    value: nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
+                }]
+            }];
+            
+            const result = await nwcjs.multiPayKeysend(nwcInfo, keysendArray, 20);
             console.log('🔍 [DEBUG v1.1] Keysend result from nwcjs:', result);
             console.log('🔍 [DEBUG v1.1] Raw keysend result structure:', JSON.stringify(result, null, 2));
             

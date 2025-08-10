@@ -566,43 +566,103 @@ var nwcjs = {
         return events[ 0 ];
     },
     payKeysend: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
+        console.log('🔧 Using nwcjs.payKeysend method');
+        
         // Try different destination formats to work around the "invalid vertex length" issue
-        var destinationFormats = {
-            full_hex: destination, // 66 chars with 02/03 prefix
-            raw_hex: destination.length === 66 ? destination.slice(2) : destination, // 64 chars without prefix
-            pubkey: destination, // Alternative parameter name
-            node_id: destination // Another alternative
-        };
+        var destinationFormats = [
+            { name: 'original', value: destination, params: { destination: destination } },
+            { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
+            { name: 'pubkey', value: destination, params: { pubkey: destination } },
+            { name: 'node_id', value: destination, params: { node_id: destination } }
+        ];
         
         console.log('Trying keysend with destination formats:', {
-            full_hex_length: destinationFormats.full_hex.length,
-            raw_hex_length: destinationFormats.raw_hex.length,
+            original_length: destinationFormats[0].value.length,
+            raw_hex_length: destinationFormats[1].value.length,
             sample: destination.substring(0, 16) + '...'
         });
         
-        // Try removing the 02/03 prefix - some implementations expect raw 32-byte pubkey
-        var rawPubkey = destination.length === 66 ? destination.slice(2) : destination;
+        // Try each format until one works
+        for (let i = 0; i < destinationFormats.length; i++) {
+            const format = destinationFormats[i];
+            console.log(`Trying format ${i + 1}/${destinationFormats.length}: ${format.name}`);
+            
+            try {
+                var msg = JSON.stringify({
+                    method: "pay_keysend",
+                    params: {
+                        ...format.params,
+                        amount: amount * 1000, // Convert sats to msat
+                        message: message || ""
+                    }
+                });
+                
+                var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
+                var obj = {
+                    kind: 23194,
+                    content: emsg,
+                    tags: [ [ "p", nwc_info[ "wallet_pubkey" ] ] ],
+                    created_at: Math.floor( Date.now() / 1000 ),
+                    pubkey: nwc_info[ "app_pubkey" ],
+                }
+                var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
+                var id = event.id;
+                nwcjs.getResponse( nwc_info, id, "pay_keysend", seconds_of_delay_tolerable );
+                await nwcjs.waitSomeSeconds( 1 );
+                var relay = nwc_info[ "relay" ];
+                nwcjs.sendEvent( event, relay );
+                
+                var loop = async () => {
+                    await nwcjs.waitSomeSeconds( 1 );
+                    if ( !nwcjs.response.length ) return await loop();
+                    var one_i_want = null;
+                    nwcjs.response.every( ( item, index ) => {
+                        if ( item[ "result_type" ] === "pay_keysend" ) {
+                            one_i_want = item;
+                            nwcjs.response.splice( index, 1 );
+                            return;
+                        }
+                        return true;
+                    });
+                    if ( one_i_want ) {
+                        console.log(`payKeysend response found with format ${format.name}:`, one_i_want);
+                        return one_i_want;
+                    }
+                    return await loop();
+                }
+                
+                const result = await loop();
+                if (result && result.result) {
+                    console.log(`✅ Keysend successful with format: ${format.name}`);
+                    return result;
+                } else if (result && result.error) {
+                    console.log(`❌ Format ${format.name} failed:`, result.error);
+                    // Continue to next format if this one failed
+                    continue;
+                }
+            } catch (error) {
+                console.log(`❌ Format ${format.name} error:`, error.message);
+                // Continue to next format if this one errored
+                continue;
+            }
+        }
         
-        console.log('Trying keysend with formats:', {
-            full_hex: destination,
-            raw_hex: rawPubkey,
-            destination_length: destination.length,
-            raw_length: rawPubkey.length
-        });
+        // If all formats failed, return the last error
+        throw new Error('All keysend destination formats failed - node may be offline or unreachable');
+    },
+    multiPayKeysend: async ( nwc_info, keysends, seconds_of_delay_tolerable = 15 ) => {
+        console.log('🔧 Using multi_pay_keysend method');
+        console.log('Keysends to process:', keysends);
         
         var msg = JSON.stringify({
-            method: "pay_keysend",
+            method: "multi_pay_keysend",
             params: {
-                pubkey: rawPubkey, // Try 64-char format without 02/03 prefix
-                amount: amount, // Amount in msat
-                tlv_records: [
-                    {
-                        type: 34349334, // Standard message TLV record type
-                        value: nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
-                    }
-                ]
+                keysends: keysends
             }
         });
+        
+        console.log('🔧 Multi-keysend request:', JSON.parse(msg));
+        
         var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
         var obj = {
             kind: 23194,
@@ -613,7 +673,7 @@ var nwcjs = {
         }
         var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
         var id = event.id;
-        nwcjs.getResponse( nwc_info, id, "pay_keysend", seconds_of_delay_tolerable );
+        nwcjs.getResponse( nwc_info, id, "multi_pay_keysend", seconds_of_delay_tolerable );
         await nwcjs.waitSomeSeconds( 1 );
         var relay = nwc_info[ "relay" ];
         nwcjs.sendEvent( event, relay );
@@ -622,7 +682,7 @@ var nwcjs = {
             if ( !nwcjs.response.length ) return await loop();
             var one_i_want = null;
             nwcjs.response.every( ( item, index ) => {
-                if ( item[ "result_type" ] === "pay_keysend" ) {
+                if ( item[ "result_type" ] === "multi_pay_keysend" ) {
                     one_i_want = item;
                     nwcjs.response.splice( index, 1 );
                     return;
@@ -630,7 +690,7 @@ var nwcjs = {
                 return true;
             });
             if ( one_i_want ) {
-                console.log('payKeysend response found:', one_i_want);
+                console.log('multiPayKeysend response found:', one_i_want);
                 return one_i_want;
             }
             return await loop();

@@ -562,5 +562,90 @@ var nwcjs = {
         });
         if ( bolt11 != invoice ) return "not paid yet";
         return events[ 0 ];
+    },
+    payKeysend: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
+        console.log('🔧 Using nwcjs.payKeysend method');
+        
+        // Try different destination formats to work around the "invalid vertex length" issue
+        var destinationFormats = [
+            { name: 'original', value: destination, params: { destination: destination } },
+            { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
+            { name: 'pubkey', value: destination, params: { pubkey: destination } },
+            { name: 'node_id', value: destination, params: { node_id: destination } }
+        ];
+        
+        console.log('Trying keysend with destination formats:', {
+            original_length: destinationFormats[0].value.length,
+            raw_hex_length: destinationFormats[1].value.length,
+            sample: destination.substring(0, 16) + '...'
+        });
+        
+        // Try each format until one works
+        for (let i = 0; i < destinationFormats.length; i++) {
+            const format = destinationFormats[i];
+            console.log(`Trying format ${i + 1}/${destinationFormats.length}: ${format.name}`);
+            
+            try {
+                var msg = JSON.stringify({
+                    method: "pay_keysend",
+                    params: {
+                        ...format.params,
+                        amount: amount * 1000, // Convert sats to msat
+                        message: message || ""
+                    }
+                });
+                
+                var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
+                var obj = {
+                    kind: 23194,
+                    content: emsg,
+                    tags: [ [ "p", nwc_info[ "wallet_pubkey" ] ] ],
+                    created_at: Math.floor( Date.now() / 1000 ),
+                    pubkey: nwc_info[ "app_pubkey" ],
+                }
+                var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
+                var id = event.id;
+                nwcjs.getResponse( nwc_info, id, "pay_keysend", seconds_of_delay_tolerable );
+                await nwcjs.waitSomeSeconds( 1 );
+                var relay = nwc_info[ "relay" ];
+                nwcjs.sendEvent( event, relay );
+                
+                var loop = async () => {
+                    await nwcjs.waitSomeSeconds( 1 );
+                    if ( !nwcjs.response.length ) return await loop();
+                    var one_i_want = null;
+                    nwcjs.response.every( ( item, index ) => {
+                        if ( item[ "result_type" ] === "pay_keysend" ) {
+                            one_i_want = item;
+                            nwcjs.response.splice( index, 1 );
+                            return;
+                        }
+                        return true;
+                    });
+                    if ( one_i_want ) {
+                        console.log(`payKeysend response found with format ${format.name}:`, one_i_want);
+                        return one_i_want;
+                    }
+                    return await loop();
+                }
+                
+                const result = await loop();
+                if (result && result.result) {
+                    console.log(`✅ Keysend successful with format: ${format.name}`);
+                    return result;
+                } else if (result && result.error) {
+                    console.log(`❌ Format ${format.name} failed:`, result.error);
+                    // Continue to next format if this one failed
+                    continue;
+                }
+            } catch (error) {
+                console.log(`❌ Format ${format.name} error:`, error.message);
+                // Continue to next format if this one errored
+                continue;
+            }
+        }
+        
+        // If all formats failed, return the last error
+        throw new Error('All keysend destination formats failed - node may be offline or unreachable');
     }
 }
