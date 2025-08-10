@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MetaBoost Test Form</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #1a1a1a;
+            color: #fff;
+            padding: 2rem;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            color: #ccc;
+        }
+        input, select {
+            width: 100%;
+            padding: 0.75rem;
+            background: #2a2a2a;
+            border: 1px solid #444;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 1rem;
+        }
+        button {
+            background: #0066cc;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            width: 100%;
+            margin: 1rem 0;
+        }
+        button:hover {
+            background: #0052a3;
+        }
+        button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        .result {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #2a2a2a;
+            border: 1px solid #00cc00;
+            border-radius: 4px;
+        }
+        .error {
+            border-color: #cc3333;
+            background: #2a1a1a;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 MetaBoost Test Form</h1>
+    <p>This is a simple test form to verify the metaBoost API is working.</p>
+    
+    <div class="form-group">
+        <label>Amount (sats)</label>
+        <input type="number" id="amount" min="1" value="100" required>
+    </div>
+    
+    <div class="form-group">
+        <label>Message</label>
+        <input type="text" id="message" placeholder="Great episode!" maxlength="240">
+    </div>
+    
+    <div class="form-group">
+        <label>Payment Proof</label>
+        <input type="text" id="paymentProof" placeholder="test_proof_123" required>
+    </div>
+    
+    <div class="form-group">
+        <label>Recipients</label>
+        <select id="recipients" multiple size="4">
+            <option value="chadf@getalby.com">chadf@getalby.com</option>
+            <option value="chadf@btcpay.podtards.com">chadf@btcpay.podtards.com</option>
+            <option value="eagerheron90@zeusnuts.com">eagerheron90@zeusnuts.com</option>
+            <option value="test@example.com">test@example.com</option>
+        </select>
+        <small style="color: #999;">Hold Ctrl/Cmd to select multiple</small>
+    </div>
+    
+    <button id="submitBtn" onclick="sendMetaBoost()">Send MetaBoost</button>
+    
+    <div id="result"></div>
+    
+    <script>
+        console.log('🔧 MetaBoost test form loaded');
+        
+        async function sendMetaBoost() {
+            const submitBtn = document.getElementById('submitBtn');
+            const result = document.getElementById('result');
+            
+            try {
+                console.log('🚀 Sending metaBoost...');
+                
+                // Get form data
+                const amount = parseInt(document.getElementById('amount').value);
+                const message = document.getElementById('message').value;
+                const paymentProof = document.getElementById('paymentProof').value;
+                const recipientSelect = document.getElementById('recipients');
+                const recipients = Array.from(recipientSelect.selectedOptions).map(opt => opt.value);
+                
+                if (!amount || !paymentProof) {
+                    throw new Error('Please enter amount and payment proof');
+                }
+                
+                if (recipients.length === 0) {
+                    throw new Error('Please select at least one recipient');
+                }
+                
+                // Show loading
+                submitBtn.innerHTML = '📤 Sending...';
+                submitBtn.disabled = true;
+                
+                // Prepare metaBoost data
+                const metaBoostData = {
+                    amount: amount,
+                    paymentProof: paymentProof,
+                    message: message || '',
+                    action: 'boost',
+                    boostId: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+                    value_msat: amount * 1000,
+                    value_msat_total: amount * 1000,
+                    recipients: recipients,
+                    podcast: 'LNURL Testing Podcast',
+                    episode: 'Test Episode',
+                    appName: 'MetaBoost Test Form',
+                    senderName: 'Test User',
+                    timestamp: new Date().toISOString(),
+                    ts: Math.floor(Date.now() / 1000),
+                    paymentInfo: {
+                        type: 'lightning',
+                        network: 'mainnet',
+                        method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
+                    }
+                };
+                
+                console.log('📤 Sending payload:', metaBoostData);
+                
+                // Send to API
+                const response = await fetch('/api/metaboost', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(metaBoostData)
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API Error: ${response.status} ${response.statusText}`);
+                }
+                
+                const apiResult = await response.json();
+                console.log('✅ Success:', apiResult);
+                
+                // Show success
+                submitBtn.innerHTML = '✅ Sent Successfully!';
+                result.className = 'result';
+                result.innerHTML = `
+                    <h3>✅ MetaBoost Sent Successfully!</h3>
+                    <p><strong>Boost ID:</strong> ${apiResult.boostId}</p>
+                    <p><strong>Amount:</strong> ${amount} sats (${amount * 1000} msat)</p>
+                    <p><strong>Message:</strong> ${message || 'None'}</p>
+                    <p><strong>Recipients:</strong> ${recipients.join(', ')}</p>
+                    <p><strong>Timestamp:</strong> ${new Date().toLocaleString()}</p>
+                    <details>
+                        <summary>View API Response</summary>
+                        <pre>${JSON.stringify(apiResult, null, 2)}</pre>
+                    </details>
+                `;
+                
+                // Reset after 3 seconds
+                setTimeout(() => {
+                    submitBtn.innerHTML = 'Send MetaBoost';
+                    submitBtn.disabled = false;
+                }, 3000);
+                
+            } catch (error) {
+                console.error('❌ Error:', error);
+                
+                submitBtn.innerHTML = '❌ Error - Try Again';
+                submitBtn.disabled = false;
+                
+                result.className = 'result error';
+                result.innerHTML = `
+                    <h3>❌ Error</h3>
+                    <p>${error.message}</p>
+                `;
+                
+                setTimeout(() => {
+                    submitBtn.innerHTML = 'Send MetaBoost';
+                }, 3000);
+            }
+        }
+    </script>
+</body>
+</html>
