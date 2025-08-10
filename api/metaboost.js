@@ -444,6 +444,7 @@ module.exports = function handler(req, res) {
       debug: process.env.NODE_ENV === 'development' ? processedBoost : undefined
     });
   } else {
+    res.setHeader('Allow', 'GET, POST, OPTIONS');
     res.status(405).json({ 
       error: 'Method not allowed',
       allowed: ['GET', 'POST', 'OPTIONS'],
