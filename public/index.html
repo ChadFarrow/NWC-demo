@@ -235,6 +235,56 @@
     <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
     <!-- Bech32 for address encoding -->
     <script src="https://bundle.run/bech32@2.0.0"></script>
+    
+    <!-- LOAD NOSTR-TOOLS IMMEDIATELY WITH CACHE BUSTING -->
+    <script>
+        // Load nostr-tools.umd.js synchronously with cache busting
+        const timestamp = Date.now();
+        const random = Math.random().toString(36).substring(2, 15);
+        const nostrToolsUrl = `nostr-tools.umd.js?t=${timestamp}&r=${random}&cb=IMMEDIATE&nocache=true`;
+        document.write(`<script src="${nostrToolsUrl}"><\/script>`);
+        console.log('📦 Loading nostr-tools.umd.js with cache busting:', nostrToolsUrl);
+    </script>
+    
+    <!-- IMMEDIATE NOSTR-TOOLS FIX - Create aliases after load -->
+    <script>
+        console.log('🔧 Setting up NostrTools aliases...');
+        
+        // Immediate check
+        if (typeof window.NostrTools !== 'undefined') {
+            window.nostrTools = window.NostrTools;
+            window.nostr = window.NostrTools;
+            console.log('✅ NostrTools aliases created immediately');
+        } else {
+            console.log('⏳ NostrTools not yet loaded, setting up polling...');
+            
+            // Poll for NostrTools and create aliases
+            let nostrToolsCheckInterval = setInterval(() => {
+                if (typeof window.NostrTools !== 'undefined') {
+                    window.nostrTools = window.NostrTools;
+                    window.nostr = window.NostrTools;
+                    console.log('✅ NostrTools aliases created after polling');
+                    clearInterval(nostrToolsCheckInterval);
+                }
+            }, 10);
+            
+            // Stop checking after 5 seconds
+            setTimeout(() => {
+                clearInterval(nostrToolsCheckInterval);
+                if (typeof window.NostrTools === 'undefined') {
+                    console.error('❌ NostrTools never loaded after 5 seconds');
+                    // Create stub to prevent errors
+                    window.nostrTools = {
+                        nip04: {
+                            encrypt: () => Promise.reject(new Error('nostr-tools not loaded')),
+                            decrypt: () => Promise.reject(new Error('nostr-tools not loaded'))
+                        }
+                    };
+                    window.nostr = window.nostrTools;
+                }
+            }, 5000);
+        }
+    </script>
 
     
     <!-- DYNAMIC SCRIPT LOADING WITH ULTRA-AGGRESSIVE CACHE BUSTING -->
