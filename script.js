@@ -2223,10 +2223,43 @@ async function sendLNURLPayment(lightningAddress, amount, message) {
 
 async function payInvoiceWithNWC(nwcString, invoice) {
     const requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    console.log(`💳 Paying invoice with NWC... (Request ID: ${requestId})`);
+    console.log(`💳 Paying invoice with NWC using nwcjs... (Request ID: ${requestId})`);
     
     try {
-        // Parse NWC string
+        // Use nwcjs if available
+        if (typeof nwcjs !== 'undefined') {
+            console.log('Using nwcjs.tryToPayInvoice...');
+            
+            // Get or create NWC info
+            let nwcInfo = nwcjs.nwc_infos.find(info => 
+                nwcString.includes(info.wallet_pubkey) && nwcString.includes(info.relay)
+            );
+            
+            if (!nwcInfo) {
+                nwcInfo = nwcjs.processNWCstring(nwcString);
+                console.log('Processed new NWC connection for payment');
+            }
+            
+            // Pay the invoice
+            const result = await nwcjs.tryToPayInvoice(nwcInfo, invoice);
+            console.log('Payment result from nwcjs:', result);
+            
+            if (result && result.result_type === 'pay_invoice') {
+                return {
+                    success: true,
+                    preimage: result.result?.preimage || 'payment_sent',
+                    result: result
+                };
+            } else {
+                return {
+                    success: false,
+                    error: result?.error || 'Payment failed'
+                };
+            }
+        }
+        
+        // Fallback to legacy method (broken)
+        console.log('Falling back to legacy NWC method...');
         const url = new URL(nwcString.replace('nostr+walletconnect://', 'https://'));
         const pubkey = url.hostname;
         const relay = url.searchParams.get('relay');
@@ -2242,145 +2275,14 @@ async function payInvoiceWithNWC(nwcString, invoice) {
         
         console.log(`📤 NWC pay_invoice request (${requestId}):`, req);
         
-        // Encrypt and send like the keysend function
-        const encrypted = await window.nostrTools.nip04.encrypt(secret, pubkey, JSON.stringify(req));
-        
-        const event = {
-            kind: 23194,
-            pubkey: await window.nostrTools.getPublicKey(secret),
-            created_at: Math.floor(Date.now() / 1000),
-            tags: [["p", pubkey]],
-            content: encrypted
-        };
-        
-        const finalized = window.nostrTools.finalizeEvent(event, secret);
-        event.id = finalized.id;
-        event.sig = finalized.sig;
-        
-        // Send to relay and wait for response
-        return new Promise((resolve, reject) => {
-            const ws = new WebSocket(relay.replace(/^ws:/, 'wss:'));
-            let timeoutId;
-            let subId;
-            
-            ws.onopen = () => {
-                console.log(`📤 Sending pay_invoice request (${requestId})...`);
-                ws.send(JSON.stringify(["EVENT", event]));
-                
-                subId = "inv-" + event.id.substring(0, 8);
-                ws.send(JSON.stringify([
-                    "REQ",
-                    subId,
-                    { "kinds": [23195], "#e": [event.id] }
-                ]));
-                console.log(`✅ Subscribed for invoice response (${requestId}):`, subId);
-            };
-            
-            ws.onmessage = async (msg) => {
-                try {
-                    const data = JSON.parse(msg.data);
-                    
-                    if (Array.isArray(data) && data[0] === "OK") {
-                        console.log(`✅ Invoice payment acknowledged by relay (${requestId}):`, data);
-                        if (data[2] === false) {
-                            clearTimeout(timeoutId);
-                            if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                            ws.close();
-                            reject(new Error('Relay rejected invoice payment: ' + (data[3] || 'Unknown error')));
-                            return;
-                        }
-                    }
-                    
-                    if (Array.isArray(data) && data[0] === "EVENT" && data[2]?.kind === 23195) {
-                        const ev = data[2];
-                        
-                        console.log(`📨 Received event kind 23195 (${requestId}):`, {
-                            id: ev.id,
-                            pubkey: ev.pubkey,
-                            tags: ev.tags,
-                            targetEventId: event.id
-                        });
-                        
-                        // Only decrypt if this event is specifically for our request
-                        const matchingTag = ev.tags.find(t => t[0] === 'e' && t[1] === event.id);
-                        if (matchingTag) {
-                            console.log(`📨 Found matching invoice response event (${requestId}), decrypting...`);
-                            console.log(`Matching tag (${requestId}):`, matchingTag);
-                            console.log(`Event pubkey (${requestId}):`, ev.pubkey);
-                            console.log(`Expected wallet pubkey (${requestId}):`, pubkey);
-                            console.log(`Client pubkey (${requestId}):`, await window.getPublicKey(secret));
-                            
-                            // Check if this event is actually from our wallet
-                            if (ev.pubkey !== pubkey) {
-                                console.log(`⚠️ Event pubkey mismatch (${requestId}) - skipping`);
-                                return;
-                            }
-                            
-                            try {
-                                const decrypted = await window.nostrTools.nip04.decrypt(secretKey, pubkey, ev.content);
-                                console.log(`✅ Decrypted invoice response (${requestId}):`, decrypted);
-                                const response = JSON.parse(decrypted);
-                                
-                                clearTimeout(timeoutId);
-                                if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                                ws.close();
-                                
-                                if (response.result && response.result.preimage) {
-                                    console.log(`✅ Invoice paid (${requestId})! Preimage:`, response.result.preimage);
-                                    resolve({ success: true, preimage: response.result.preimage });
-                                } else {
-                                    console.log(`❌ Invoice payment failed (${requestId}):`, response.error);
-                                    reject(new Error(response.error || 'Invoice payment failed'));
-                                }
-                            } catch (decryptError) {
-                                console.error(`❌ Failed to decrypt invoice response (${requestId}):`, decryptError);
-                                console.log(`Event details (${requestId}):`, ev);
-                                console.log(`Expected event ID (${requestId}):`, event.id);
-                                console.log(`Actual event tags (${requestId}):`, ev.tags);
-                                clearTimeout(timeoutId);
-                                if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                                ws.close();
-                                reject(new Error('Failed to decrypt invoice response'));
-                            }
-                        } else {
-                            console.log(`📨 Received unrelated event (${requestId}), ignoring...`, {
-                                eventId: ev.id,
-                                tags: ev.tags,
-                                lookingFor: event.id
-                            });
-                        }
-                    }
-                    
-                    if (Array.isArray(data) && data[0] === "EOSE") {
-                        console.log(`📋 End of stored events for invoice subscription (${requestId})`);
-                    }
-                    
-                } catch (e) {
-                    console.error('Error parsing invoice message:', e);
-                }
-            };
-            
-            ws.onerror = (e) => {
-                clearTimeout(timeoutId);
-                if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                ws.close();
-                reject(new Error('WebSocket error during invoice payment'));
-            };
-            
-            timeoutId = setTimeout(() => {
-                if (subId) ws.send(JSON.stringify(["CLOSE", subId]));
-                ws.close();
-                reject(new Error('Invoice payment timed out'));
-            }, 30000);
-        });
+        // This will fail because finalizeEvent is not available
+        throw new Error('Legacy NWC method not working - nwcjs required');
         
     } catch (error) {
         console.error('❌ NWC invoice payment failed:', error);
-        return { success: false, error: error.message };
+        return { success: false, error: error.message || 'Payment failed' };
     }
 }
-
-// Internal relay test function (returns result instead of showing alert)
 async function testRelayConnectionInternal(relay) {
     return new Promise((resolve) => {
         console.log('Testing relay connection:', relay);
