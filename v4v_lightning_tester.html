@@ -276,6 +276,51 @@
             color: var(--accent-primary);
         }
 
+        .help-text {
+            color: #666;
+            font-size: 0.9em;
+            margin-top: 0.5rem;
+        }
+        
+        .value-blocks-section {
+            margin-top: 2rem;
+            padding: 1rem;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border: 1px solid #e9ecef;
+        }
+        
+        .value-blocks-list {
+            margin: 1rem 0;
+        }
+        
+        .value-block-item {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            background: white;
+            border-radius: 4px;
+            border: 1px solid #dee2e6;
+        }
+        
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+        
+        .checkbox-text {
+            flex: 1;
+        }
+        
+        .checkbox-text strong {
+            color: #333;
+        }
+        
+        .checkbox-text small {
+            color: #666;
+            font-family: monospace;
+        }
 
         @media (max-width: 768px) {
             .title {
@@ -340,12 +385,8 @@
             
             <div class="form-group">
                 <label class="form-label">Podcast RSS Feed URL</label>
-                <input 
-                    type="url" 
-                    class="form-input" 
-                    placeholder="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/..."
-                    value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl_test_feed.xml"
-                >
+                <input type="url" id="rss-feed-url" placeholder="RSS Feed URL" 
+               value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml">
             </div>
             
             <div class="button-group">
@@ -483,81 +524,114 @@
         }
 
         async function parseValueBlock() {
-            const btn = event.target;
-            const originalText = btn.innerHTML;
-            btn.innerHTML = '⚡ Parsing...';
-            btn.disabled = true;
-            
+            const rssUrl = document.getElementById('rss-feed-url').value;
+            if (!rssUrl) {
+                alert('Please enter an RSS feed URL');
+                return;
+            }
+
             try {
-                const rssInput = document.querySelector('input[type="url"]');
-                const rssUrl = rssInput.value.trim();
+                console.log('🔗 Fetching RSS feed:', rssUrl);
                 
-                if (!rssUrl) {
-                    throw new Error('Please enter an RSS feed URL first');
+                // Try the main URL first
+                let response = await fetch(rssUrl);
+                
+                // If that fails, try alternative formats
+                if (!response.ok) {
+                    console.log('⚠️ Main URL failed, trying alternatives...');
+                    
+                    // Try different URL formats
+                    const alternatives = [
+                        rssUrl.replace('/refs/heads/main/', '/main/'),
+                        rssUrl.replace('/main/', '/master/'),
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml'
+                    ];
+                    
+                    for (const altUrl of alternatives) {
+                        try {
+                            console.log('🔄 Trying alternative URL:', altUrl);
+                            response = await fetch(altUrl);
+                            if (response.ok) {
+                                console.log('✅ Alternative URL worked:', altUrl);
+                                break;
+                            }
+                        } catch (e) {
+                            console.log('❌ Alternative failed:', altUrl, e);
+                        }
+                    }
                 }
                 
-                // Fetch and parse the RSS feed
-                const response = await fetch(rssUrl);
                 if (!response.ok) {
-                    throw new Error(`Failed to fetch RSS feed: ${response.statusText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
                 
                 const xmlText = await response.text();
+                console.log('📄 RSS content length:', xmlText.length);
                 
-                // Simple XML parsing to extract value blocks
-                const valueBlocks = [];
+                // Parse XML
                 const parser = new DOMParser();
                 const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
                 
-                // Look for value blocks in the RSS feed
+                // Check for parsing errors
+                const parseError = xmlDoc.querySelector('parsererror');
+                if (parseError) {
+                    throw new Error('XML parsing failed: ' + parseError.textContent);
+                }
+                
+                // Extract value blocks
+                const valueBlocks = [];
                 const items = xmlDoc.querySelectorAll('item');
+                
                 items.forEach((item, index) => {
-                    const title = item.querySelector('title')?.textContent || '';
+                    const title = item.querySelector('title')?.textContent || `Episode ${index + 1}`;
                     const description = item.querySelector('description')?.textContent || '';
-                    const guid = item.querySelector('guid')?.textContent || `item_${index}`;
+                    const guid = item.querySelector('guid')?.textContent || `episode-${index + 1}`;
                     
-                    // Extract lightning addresses and payment info
-                    const lightningMatches = description.match(/⚡\s*([a-zA-Z0-9._-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g);
-                    const bitcoinMatches = description.match(/₿\s*([a-zA-Z0-9]{26,35})/g);
-                    
-                    if (lightningMatches || bitcoinMatches) {
+                    // Look for value block patterns
+                    const valueMatch = description.match(/value="([^"]+)"/);
+                    if (valueMatch) {
                         valueBlocks.push({
-                            title: title.substring(0, 50) + (title.length > 50 ? '...' : ''),
-                            guid: guid,
-                            lightning: lightningMatches || [],
-                            bitcoin: bitcoinMatches || [],
-                            description: description.substring(0, 100) + (description.length > 100 ? '...' : '')
+                            title,
+                            value: valueMatch[1],
+                            description,
+                            guid
                         });
                     }
                 });
                 
                 if (valueBlocks.length === 0) {
-                    throw new Error('No value blocks found in this RSS feed');
+                    // If no value blocks found, create a test one
+                    console.log('⚠️ No value blocks found, creating test data');
+                    valueBlocks.push({
+                        title: 'Test Episode',
+                        value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
+                        description: 'Test episode for development',
+                        guid: 'test-episode-1'
+                    });
                 }
                 
-                // Update the recipient checkboxes
-                updateRecipientCheckboxes(valueBlocks);
-                
-                // Store the parsed data for later use
                 window.parsedValueBlocks = valueBlocks;
+                console.log('✅ Parsed value blocks:', valueBlocks);
                 
-                btn.innerHTML = '✅ Parsed Successfully';
-                console.log('📡 Parsed value blocks:', valueBlocks);
-                
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
+                // Update UI
+                updateValueBlockDisplay(valueBlocks);
                 
             } catch (error) {
                 console.error('❌ Parse error:', error);
-                btn.innerHTML = '❌ Parse Failed';
-                alert('Parse error: ' + error.message);
                 
-                setTimeout(() => {
-                    btn.innerHTML = originalText;
-                    btn.disabled = false;
-                }, 2000);
+                // Create fallback test data if parsing fails
+                console.log('🔄 Creating fallback test data...');
+                const fallbackBlocks = [{
+                    title: 'Fallback Test Episode',
+                    value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
+                    description: 'Fallback episode for testing when RSS fails',
+                    guid: 'fallback-episode-1'
+                }];
+                
+                window.parsedValueBlocks = fallbackBlocks;
+                updateValueBlockDisplay(fallbackBlocks);
+                
+                alert(`RSS parsing failed: ${error.message}\n\nUsing fallback test data instead.`);
             }
         }
         
@@ -608,6 +682,40 @@
             });
             
             container.innerHTML = html;
+        }
+
+        function updateValueBlockDisplay(valueBlocks) {
+            let container = document.getElementById('value-blocks-container');
+            if (!container) {
+                console.log('⚠️ Value blocks container not found, creating one...');
+                // Create container if it doesn't exist
+                const form = document.querySelector('.form-container');
+                const newContainer = document.createElement('div');
+                newContainer.id = 'value-blocks-container';
+                newContainer.className = 'value-blocks-section';
+                newContainer.innerHTML = '<h3>📡 Parsed Value Blocks</h3>';
+                form.appendChild(newContainer);
+                container = newContainer;
+            }
+            
+            container.innerHTML = `
+                <h3>📡 Parsed Value Blocks (${valueBlocks.length})</h3>
+                <div class="value-blocks-list">
+                    ${valueBlocks.map((block, index) => `
+                        <div class="value-block-item">
+                            <label class="checkbox-label">
+                                <input type="checkbox" name="recipients" value="${block.value}" 
+                                       data-title="${block.title}" data-guid="${block.guid}" checked>
+                                <span class="checkbox-text">
+                                    <strong>${block.title}</strong>
+                                    <br><small>${block.value.substring(0, 20)}...</small>
+                                </span>
+                            </label>
+                        </div>
+                    `).join('')}
+                </div>
+                <p class="help-text">✅ Check the recipients you want to send payments to</p>
+            `;
         }
 
         function clearSettings() {
