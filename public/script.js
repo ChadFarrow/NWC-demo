@@ -1581,6 +1581,16 @@ async function testWalletCapabilities(nwcString) {
             encryptType: window.nostrTools.nip04?.encrypt ? typeof window.nostrTools.nip04.encrypt : 'undefined'
         });
         
+        // Log the actual nip04 object to see what's available
+        console.log('nip04 object:', window.nostrTools.nip04);
+        console.log('nip04 functions available:', window.nostrTools.nip04 ? Object.getOwnPropertyNames(window.nostrTools.nip04) : []);
+        
+        // Check if window.nostr is available (browser extension)
+        if (window.nostr && window.nostr.nip04) {
+            console.log('window.nostr.nip04 is available from browser extension');
+            console.log('window.nostr.nip04 methods:', Object.keys(window.nostr.nip04));
+        }
+        
         if (!window.nostrTools.nip04) {
             throw new Error('nostr-tools nip04 module not available');
         }
@@ -1629,26 +1639,45 @@ async function testWalletCapabilities(nwcString) {
         
         let encrypted;
         try {
-            // Try with the parameters as-is first
-            console.log('Attempting encryption with current parameters...');
-            encrypted = await window.nostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
-            console.log('Encryption result:', encrypted ? 'success' : 'returned undefined/null');
+            // First try window.nostr if available (browser extension)
+            if (window.nostr && window.nostr.nip04 && window.nostr.nip04.encrypt) {
+                console.log('Using window.nostr.nip04.encrypt (browser extension)...');
+                encrypted = await window.nostr.nip04.encrypt(pubkey, reqJson);
+                console.log('Encryption result:', encrypted ? `success (${encrypted.length} chars)` : 'returned undefined/null');
+            } 
+            // Otherwise try nostrTools.nip04.encrypt
+            else if (typeof window.nostrTools.nip04.encrypt === 'function') {
+                console.log('Attempting encryption with nostrTools.nip04.encrypt...');
+                // The nostr-tools library might expect the call without await
+                const result = window.nostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
+                // Check if it returns a promise
+                if (result && typeof result.then === 'function') {
+                    console.log('nip04.encrypt returned a promise, awaiting...');
+                    encrypted = await result;
+                } else {
+                    console.log('nip04.encrypt returned synchronously');
+                    encrypted = result;
+                }
+                console.log('Encryption result:', encrypted ? `success (${encrypted.length} chars)` : 'returned undefined/null');
+            } 
+            // Try calling nip04 directly as a function
+            else if (typeof window.nostrTools.nip04 === 'function') {
+                console.log('Attempting encryption with nip04 as function...');
+                encrypted = await window.nostrTools.nip04(secretKey, pubkey, reqJson);
+                console.log('Encryption result:', encrypted ? `success (${encrypted.length} chars)` : 'returned undefined/null');
+            } 
+            else {
+                // Log what we have and throw error
+                console.log('No suitable encryption method found');
+                console.log('Available nostrTools methods:', Object.keys(window.nostrTools));
+                console.log('nip04 type:', typeof window.nostrTools.nip04);
+                console.log('nip04 properties:', window.nostrTools.nip04 ? Object.getOwnPropertyNames(window.nostrTools.nip04) : 'none');
+                throw new Error('No suitable NIP-04 encryption method found');
+            }
         } catch (encryptError) {
             console.error('Encryption error details:', encryptError);
             console.error('Error stack:', encryptError.stack);
-            
-            // Try alternative parameter order or format
-            console.log('Trying alternative: checking if parameters need different format...');
-            
-            // Some versions might expect (privateKey, publicKey, text) vs (publicKey, privateKey, text)
-            try {
-                console.log('Trying reversed parameter order...');
-                encrypted = await window.nostrTools.nip04.encrypt(pubkey, secretKey, reqJson);
-                console.log('Reversed order worked!');
-            } catch (e2) {
-                console.error('Reversed order also failed:', e2.message);
-                throw new Error(`NIP-04 encryption failed: ${encryptError.message}`);
-            }
+            throw new Error(`NIP-04 encryption failed: ${encryptError.message}`);
         }
         
         if (!encrypted) {
