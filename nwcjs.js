@@ -581,6 +581,7 @@ var nwcjs = {
         });
         
         // Try each format until one works
+        var formatErrors = [];
         for (let i = 0; i < destinationFormats.length; i++) {
             const format = destinationFormats[i];
             console.log(`Trying format ${i + 1}/${destinationFormats.length}: ${format.name}`);
@@ -634,18 +635,25 @@ var nwcjs = {
                     console.log(`✅ Keysend successful with format: ${format.name}`);
                     return result;
                 } else if (result && result.error) {
-                    console.log(`❌ Format ${format.name} failed:`, result.error);
+                    const errorMsg = `Format ${format.name}: ${result.error}`;
+                    console.log(`❌ ${errorMsg}`);
+                    formatErrors.push(errorMsg);
                     // Continue to next format if this one failed
                     continue;
                 }
             } catch (error) {
-                console.log(`❌ Format ${format.name} error:`, error.message);
+                const errorMsg = `Format ${format.name}: ${error.message}`;
+                console.log(`❌ ${errorMsg}`);
+                formatErrors.push(errorMsg);
                 // Continue to next format if this one errored
                 continue;
             }
         }
         
-        // If all formats failed, return the last error
-        throw new Error('All keysend destination formats failed - node may be offline or unreachable');
+        // If all formats failed, provide detailed error information
+        const detailedError = formatErrors.length > 0 
+            ? `All keysend destination formats failed:\n${formatErrors.join('\n')}`
+            : 'All keysend destination formats failed - no specific error details available';
+        throw new Error(detailedError);
     }
 }

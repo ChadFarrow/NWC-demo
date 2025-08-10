@@ -2453,7 +2453,12 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 } else if (errorMsg.includes('Node not found')) {
                     errorMsg = 'Node not found in Lightning Network (may be offline or unreachable)';
                 } else if (errorMsg.includes('All keysend destination formats failed')) {
-                    errorMsg = 'Node not found in Lightning Network (may be offline or unreachable)';
+                    // Keep the detailed error message from nwcjs
+                    if (errorMsg.includes('\n')) {
+                        errorMsg = 'Keysend failed - all destination formats rejected:\n' + errorMsg.split('\n').slice(1).join('\n');
+                    } else {
+                        errorMsg = 'Keysend failed - all destination formats rejected';
+                    }
                 }
                 
                 return {
@@ -2536,6 +2541,51 @@ window.testKeysend = async function testKeysend() {
     } catch (error) {
         console.error('Keysend test error:', error);
         alert('Keysend test failed: ' + error.message);
+    }
+};
+
+// Test specific problematic node
+window.testProblematicNode = async function testProblematicNode() {
+    const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+    const nwcString = nwcInput.value.trim();
+    
+    console.log('\n=== Problematic Node Test ===');
+    
+    if (!nwcString) {
+        alert('Please enter a NWC string first.');
+        return;
+    }
+    
+    try {
+        // Test with the node that failed in your payment
+        const problematicPubkey = '03ecb3ee55ba6324d40bea174de096dc9134cb35d990235723b37ae9b5c49f4f53';
+        const testAmount = 1; // 1 sat
+        
+        console.log('Testing problematic node:');
+        console.log('- Pubkey:', problematicPubkey);
+        console.log('- Amount:', testAmount, 'sats');
+        
+        // First test connectivity
+        const connectivityTest = await testNodeConnectivity(problematicPubkey);
+        console.log('Connectivity test result:', connectivityTest);
+        
+        if (!connectivityTest.reachable) {
+            alert(`❌ Node connectivity check failed:\n${connectivityTest.message}`);
+            return;
+        }
+        
+        // Then test keysend
+        const result = await sendKeysendWithNWC(nwcString, problematicPubkey, testAmount, 'Test problematic node');
+        
+        if (result.success) {
+            alert(`✅ Keysend to problematic node successful!\nPreimage: ${result.preimage}`);
+        } else {
+            alert(`❌ Keysend to problematic node failed:\n${result.error}`);
+        }
+        
+    } catch (error) {
+        console.error('Problematic node test error:', error);
+        alert('Problematic node test failed: ' + error.message);
     }
 };
 
