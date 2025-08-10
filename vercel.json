@@ -26,42 +26,18 @@
       "use": "@vercel/node"
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
+      "source": "/api/(.*)",
+      "destination": "/api/index.js"
     },
     {
-      "src": "/src/(.*)",
-      "dest": "/src/$1",
-      "headers": {
-        "Content-Type": "application/javascript"
-      }
+      "source": "/src/(.*)",
+      "destination": "/src/$1"
     },
     {
-      "src": "/(.*\\.js)",
-      "dest": "/$1",
-      "headers": {
-        "Content-Type": "application/javascript"
-      }
-    },
-    {
-      "src": "/(.*\\.html)",
-      "dest": "/$1",
-      "headers": {
-        "Content-Type": "text/html"
-      }
-    },
-    {
-      "src": "/(.*\\.xml)",
-      "dest": "/$1",
-      "headers": {
-        "Content-Type": "application/xml"
-      }
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/public/$1"
+      "source": "/(.*)",
+      "destination": "/public/$1"
     }
   ],
   "headers": [
@@ -80,6 +56,15 @@
         {
           "key": "Content-Type",
           "value": "application/xml"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.html)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/html"
         }
       ]
     }
