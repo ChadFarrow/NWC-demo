@@ -129,13 +129,10 @@
     
     <!-- IMMEDIATE KEYSEND FIX - Override sendKeysendWithNWC to use multi_pay_keysend -->
     <script>
-        console.log('🚀 Loading immediate keysend fix override...');
+        console.log('🚀 Loading immediate keysend fix override v2...');
         
-        // Override sendKeysendWithNWC function immediately when page loads
-        window.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                // Override the sendKeysendWithNWC function with working multi_pay_keysend version
-                window.sendKeysendWithNWC = async function(nwcString, pubkey, amount, message) {
+        // IMMEDIATELY override the sendKeysendWithNWC function - no waiting
+        window.sendKeysendWithNWC = async function(nwcString, pubkey, amount, message) {
                     console.log('🔧 [OVERRIDE] Using working multi_pay_keysend method');
                     console.log(`Target: ${pubkey.substring(0, 16)}... Amount: ${amount} sats`);
                     
@@ -187,10 +184,20 @@
                         };
                     }
                 };
-                
-                console.log('✅ sendKeysendWithNWC override installed');
-            }, 2000); // Wait 2 seconds for other scripts to load
-        });
+        };
+        
+        // Also add a connectivity test stub to prevent undefined errors
+        window.testNodeConnectivity = async function(pubkey) {
+            console.log('🔍 Testing node connectivity for:', pubkey);
+            return {
+                reachable: true,
+                message: 'Node connectivity test bypassed - using direct payment attempt',
+                source: 'stub'
+            };
+        };
+        
+        console.log('✅ sendKeysendWithNWC override installed immediately');
+        console.log('✅ testNodeConnectivity stub installed');
     </script>
     
     <!-- Standalone MetaBoost Handler v2 -->
