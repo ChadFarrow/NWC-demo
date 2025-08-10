@@ -1652,12 +1652,17 @@ async function testWalletCapabilitiesWithNWCJS(nwcString) {
         const balance = await nwcjs.getBalance(nwcInfo);
         console.log('Wallet balance:', balance);
         
-        return {
+        // Format the response to match expected structure
+        const capabilities = {
             success: true,
-            info: info,
-            balance: balance,
+            info: info.result || info,
+            balance: balance.result || balance,
+            methods: info.result?.methods || ['pay_invoice', 'get_info', 'get_balance'], // Default methods
             nwcInfo: nwcInfo
         };
+        
+        console.log('✅ NWCJS wallet test completed successfully');
+        return capabilities;
     } catch (error) {
         console.error('NWCJS error:', error);
         throw error;
