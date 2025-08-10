@@ -36,6 +36,10 @@
   ],
   "rewrites": [
     {
+      "source": "/favicon.ico",
+      "destination": "/favicon.png"
+    },
+    {
       "source": "/api/metaboost",
       "destination": "/api/metaboost.js"
     },
