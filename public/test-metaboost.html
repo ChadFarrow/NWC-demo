@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MetaBoost Test</title>
+</head>
+<body>
+    <h1>MetaBoost Function Test</h1>
+    
+    <button onclick="testFunction()">Test Function</button>
+    
+    <div id="results"></div>
+    
+    <script>
+        function testFunction() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<h2>Test Results:</h2>';
+            
+            // Test if sendMetaBoostMetadata exists
+            if (typeof window.sendMetaBoostMetadata === 'function') {
+                results.innerHTML += '<p>✅ sendMetaBoostMetadata function exists</p>';
+            } else {
+                results.innerHTML += '<p>❌ sendMetaBoostMetadata function NOT found</p>';
+            }
+            
+            // Test if handleMetaBoostSubmit exists
+            if (typeof window.handleMetaBoostSubmit === 'function') {
+                results.innerHTML += '<p>✅ handleMetaBoostSubmit function exists</p>';
+            } else {
+                results.innerHTML += '<p>❌ handleMetaBoostSubmit function NOT found</p>';
+            }
+            
+            // Show all window functions containing 'meta' or 'boost'
+            const windowFunctions = Object.keys(window).filter(key => 
+                (key.toLowerCase().includes('meta') || key.toLowerCase().includes('boost')) &&
+                typeof window[key] === 'function'
+            );
+            
+            results.innerHTML += '<p><strong>Window functions containing "meta" or "boost":</strong></p>';
+            results.innerHTML += '<ul>' + windowFunctions.map(f => `<li>${f}</li>`).join('') + '</ul>';
+        }
+    </script>
+</body>
+</html>
