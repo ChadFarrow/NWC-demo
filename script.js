@@ -1718,11 +1718,8 @@ async function testWalletCapabilities(nwcString) {
         console.log('nip04 object:', window.nostrTools.nip04);
         console.log('nip04 functions available:', window.nostrTools.nip04 ? Object.getOwnPropertyNames(window.nostrTools.nip04) : []);
         
-        // Check if window.nostr is available (browser extension)
-        if (window.nostr && window.nostr.nip04) {
-            console.log('window.nostr.nip04 is available from browser extension');
-            console.log('window.nostr.nip04 methods:', Object.keys(window.nostr.nip04));
-        }
+        // 🔒 BROWSER EXTENSIONS DISABLED - Using local nostr-tools only
+        console.log('🔒 Browser extensions disabled - using local nostr-tools only');
         
         if (!window.nostrTools.nip04) {
             throw new Error('nostr-tools nip04 module not available');
@@ -1777,12 +1774,8 @@ async function testWalletCapabilities(nwcString) {
             // We need to implement our own NIP-04 encryption since the library version isn't working
             console.log('Implementing NIP-04 encryption for NWC...');
             
-            // Check if we can use the Alby extension temporarily for debugging
-            // but note that this won't work for actual NWC since it uses a different key
-            if (false && window.nostr && window.nostr.nip04 && window.nostr.nip04.encrypt) {
-                // Disabled - we need to use the NWC secret, not the browser extension
-                console.log('Browser extension available but skipping for NWC');
-            }
+            // 🔒 BROWSER EXTENSIONS DISABLED - Using local nostr-tools only
+            console.log('🔒 Browser extensions disabled - using local nostr-tools only');
             
             // Check what's actually available in nostrTools
             console.log('Checking nostrTools for encryption methods...');
@@ -1792,15 +1785,6 @@ async function testWalletCapabilities(nwcString) {
             if (window.NostrTools && window.NostrTools.nip04) {
                 console.log('Found NostrTools (capital N)');
                 encrypted = await window.NostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
-            } else if (window.nostr && typeof window.nostr.nip04.encrypt === 'function') {
-                // Use browser extension but with our keys
-                console.log('Using browser extension as fallback - note this may not work correctly');
-                console.log('Browser extension will use its own keys, not the NWC secret');
-                
-                // We can't use the browser extension for NWC - it uses different keys
-                // Need to implement our own encryption
-                encrypted = await nip04Encrypt(secretKey, pubkey, reqJson);
-                console.log('Used custom encryption implementation');
             } 
             // Try calling nip04 directly as a function
             else if (typeof window.nostrTools.nip04 === 'function') {
@@ -3693,7 +3677,7 @@ window.handleMetaBoostSubmit = function(event) {
 // ===== Script Loading Debug =====
 console.log('✅ script.js loaded successfully');
 console.log('nostr-tools available:', typeof window.nostrTools !== 'undefined');
-console.log('nostr available:', typeof window.nostr !== 'undefined');
+console.log('🔒 Browser extensions disabled - using local nostr-tools only');
 
 // ===== Main Script Functions =====
 
