@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Alby NWC Debug Test</title>
+</head>
+<body>
+    <h1>Alby NWC Method Check</h1>
+    <p>Enter your NWC string:</p>
+    <input type="text" id="nwc-input" placeholder="nostr+walletconnect://..." style="width: 500px;">
+    <br><br>
+    <button onclick="checkMethods()">Check Supported Methods</button>
+    
+    <div id="results"></div>
+    
+    <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
+    <script src="https://bundle.run/bech32@2.0.0"></script>
+    <script src="nwcjs.js"></script>
+    
+    <script>
+        async function checkMethods() {
+            try {
+                const nwcString = document.getElementById('nwc-input').value;
+                if (!nwcString) {
+                    alert('Please enter your NWC string');
+                    return;
+                }
+                
+                console.log('Processing NWC string...');
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                console.log('NWC info:', nwcInfo);
+                
+                console.log('Getting wallet info...');
+                const info = await nwcjs.getInfo(nwcInfo);
+                console.log('Raw wallet info response:', info);
+                
+                const methods = info?.result?.methods || [];
+                console.log('Supported methods:', methods);
+                
+                const results = document.getElementById('results');
+                results.innerHTML = `
+                    <h2>Results:</h2>
+                    <p><strong>Supported Methods:</strong></p>
+                    <ul>
+                        ${methods.map(method => `<li>${method}</li>`).join('')}
+                    </ul>
+                    <p><strong>Supports pay_keysend:</strong> ${methods.includes('pay_keysend') ? '✅ YES' : '❌ NO'}</p>
+                    <p><strong>Raw Response:</strong></p>
+                    <pre>${JSON.stringify(info, null, 2)}</pre>
+                `;
+                
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error: ' + error.message);
+            }
+        }
+    </script>
+</body>
+</html>
