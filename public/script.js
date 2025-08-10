@@ -2341,7 +2341,7 @@ async function payInvoiceWithNWC(nwcString, invoice) {
 
 async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
     const requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
-    console.log(`🔑 Sending keysend with NWC... (Request ID: ${requestId})`);
+    console.log(`🔑 [KEYSEND DEBUG v1.1] Sending keysend with NWC... (Request ID: ${requestId})`);
     console.log(`Target: ${pubkey.substring(0, 16)}... (length: ${pubkey.length})`);
     console.log(`Full pubkey: ${pubkey}`);
     console.log(`Amount: ${amount} sats`);
@@ -2376,10 +2376,11 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
             }
             
             // First check if wallet supports keysend
-            console.log('Checking if wallet supports pay_keysend...');
+            console.log('🔍 [DEBUG v1.1] Checking if wallet supports pay_keysend...');
             const walletInfo = await nwcjs.getInfo(nwcInfo);
             const supportedMethods = walletInfo?.result?.methods || [];
-            console.log('Wallet supported methods:', supportedMethods);
+            console.log('🔍 [DEBUG v1.1] Wallet supported methods:', supportedMethods);
+            console.log('🔍 [DEBUG v1.1] Full wallet info:', JSON.stringify(walletInfo, null, 2));
             
             if (!supportedMethods.includes('pay_keysend')) {
                 console.log('⚠️ Wallet does not support pay_keysend method');
@@ -2399,8 +2400,16 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
             
             // Use the new payKeysend method
             const result = await nwcjs.payKeysend(nwcInfo, destination, amount * 1000, message || '', 20);
-            console.log('Keysend result from nwcjs:', result);
-            console.log('Raw keysend result structure:', JSON.stringify(result, null, 2));
+            console.log('🔍 [DEBUG v1.1] Keysend result from nwcjs:', result);
+            console.log('🔍 [DEBUG v1.1] Raw keysend result structure:', JSON.stringify(result, null, 2));
+            
+            // CRITICAL: Show the exact error details
+            if (result?.error) {
+                console.log('🚨 [CRITICAL] Raw keysend error details:');
+                console.log('   Error message:', result.error.message);
+                console.log('   Error code:', result.error.code);
+                console.log('   Full error object:', result.error);
+            }
             
             if (result && result.result) {
                 return {
