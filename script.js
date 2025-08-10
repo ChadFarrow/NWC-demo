@@ -2240,20 +2240,67 @@ async function payInvoiceWithNWC(nwcString, invoice) {
                 console.log('Processed new NWC connection for payment');
             }
             
-            // Pay the invoice
-            const result = await nwcjs.tryToPayInvoice(nwcInfo, invoice);
+            // Pay the invoice using the proper nwcjs method
+            console.log('Sending payment request...');
+            
+            // Create the payment request manually since tryToPayInvoice doesn't return response
+            const msg = {
+                method: "pay_invoice",
+                params: { invoice }
+            };
+            const msgJson = JSON.stringify(msg);
+            const encrypted = await nwcjs.encrypt(nwcInfo.app_privkey, nwcInfo.wallet_pubkey, msgJson);
+            
+            const event = {
+                kind: 23194,
+                content: encrypted,
+                tags: [["p", nwcInfo.wallet_pubkey]],
+                created_at: Math.floor(Date.now() / 1000),
+                pubkey: nwcInfo.app_pubkey,
+            };
+            
+            const signedEvent = await nwcjs.getSignedEvent(event, nwcInfo.app_privkey);
+            console.log('Payment event signed, sending to relay...');
+            
+            // Set up response listener
+            nwcjs.getResponse(nwcInfo, signedEvent.id, "pay_invoice", 10);
+            await nwcjs.waitSomeSeconds(1);
+            
+            // Send the event
+            nwcjs.sendEvent(signedEvent, nwcInfo.relay);
+            console.log('Payment request sent, waiting for response...');
+            
+            // Wait for response (similar to other nwcjs functions)
+            const waitForResponse = async () => {
+                for (let i = 0; i < 10; i++) {  // Wait up to 10 seconds
+                    await nwcjs.waitSomeSeconds(1);
+                    if (nwcjs.response.length > 0) {
+                        // Look for our response
+                        for (let j = 0; j < nwcjs.response.length; j++) {
+                            const resp = nwcjs.response[j];
+                            if (resp.result_type === 'pay_invoice') {
+                                nwcjs.response.splice(j, 1);  // Remove it from the array
+                                return resp;
+                            }
+                        }
+                    }
+                }
+                throw new Error('Payment timeout - no response received');
+            };
+            
+            const result = await waitForResponse();
             console.log('Payment result from nwcjs:', result);
             
-            if (result && result.result_type === 'pay_invoice') {
+            if (result && result.result) {
                 return {
                     success: true,
-                    preimage: result.result?.preimage || 'payment_sent',
+                    preimage: result.result.preimage || 'payment_sent',
                     result: result
                 };
             } else {
                 return {
                     success: false,
-                    error: result?.error || 'Payment failed'
+                    error: result?.error?.message || result?.error || 'Payment failed'
                 };
             }
         }
