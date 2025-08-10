@@ -223,6 +223,9 @@
                 <button class="btn btn-secondary" onclick="testCacheBusting()" title="Test cache busting functionality">
                     🧪 Test Cache Bust
                 </button>
+                <button class="btn btn-success" onclick="forceLoadScripts()" title="Manually trigger script loading">
+                    🚀 Force Load Scripts
+                </button>
             </div>
         </div>
     </div>
@@ -230,6 +233,8 @@
     <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
     <!-- Bech32 for address encoding -->
     <script src="https://bundle.run/bech32@2.0.0"></script>
+
+    
     <!-- DYNAMIC SCRIPT LOADING WITH ULTRA-AGGRESSIVE CACHE BUSTING -->
     <script>
         (function() {
@@ -246,35 +251,57 @@
             function loadScriptsWithCacheBusting() {
                 console.log('🔄 Loading scripts with ULTRA-AGGRESSIVE cache busting...');
                 
-                // Load nwcjs.js with cache busting
-                const nwcjsScript = document.createElement('script');
-                nwcjsScript.src = window.bustCache('nwcjs.js');
-                nwcjsScript.onload = () => {
-                    console.log('✅ nwcjs.js loaded with cache busting');
+                // Load nostr-tools.umd.js first (required for NWC encryption)
+                const nostrToolsScript = document.createElement('script');
+                nostrToolsScript.src = window.bustCache('nostr-tools.umd.js');
+                nostrToolsScript.onload = () => {
+                    console.log('✅ nostr-tools.umd.js loaded with cache busting');
                     
-                    // Load script-v2.js with cache busting
-                    const scriptV2 = document.createElement('script');
-                    scriptV2.src = window.bustCache('script-v2.js');
-                    scriptV2.onload = () => {
-                        console.log('✅ script-v2.js loaded with cache busting');
-                        console.log('🚀 ALL SCRIPTS LOADED WITH ULTRA-AGGRESSIVE CACHE BUSTING!');
+                    // Load nwcjs.js with cache busting
+                    const nwcjsScript = document.createElement('script');
+                    nwcjsScript.src = window.bustCache('nwcjs.js');
+                    nwcjsScript.onload = () => {
+                        console.log('✅ nwcjs.js loaded with cache busting');
+                        
+                        // Load script-v2.js with cache busting
+                        const scriptV2 = document.createElement('script');
+                        scriptV2.src = window.bustCache('script-v2.js');
+                        scriptV2.onload = () => {
+                            console.log('✅ script-v2.js loaded with cache busting');
+                            
+                            // Load main.js module
+                            const mainScript = document.createElement('script');
+                            mainScript.type = 'module';
+                            mainScript.src = window.bustCache('/src/main.js');
+                            mainScript.onload = () => {
+                                console.log('✅ main.js loaded with cache busting');
+                                console.log('🚀 ALL SCRIPTS LOADED WITH ULTRA-AGGRESSIVE CACHE BUSTING!');
+                                
+                                // Trigger a custom event when all scripts are loaded
+                                window.dispatchEvent(new CustomEvent('allScriptsLoaded'));
+                            };
+                            mainScript.onerror = (e) => {
+                                console.error('❌ Failed to load main.js:', e);
+                            };
+                            document.head.appendChild(mainScript);
+                        };
+                        scriptV2.onerror = (e) => {
+                            console.error('❌ Failed to load script-v2.js:', e);
+                        };
+                        document.head.appendChild(scriptV2);
                     };
-                    scriptV2.onerror = (e) => {
-                        console.error('❌ Failed to load script-v2.js:', e);
+                    nwcjsScript.onerror = (e) => {
+                        console.error('❌ Failed to load nwcjs.js:', e);
                     };
-                    document.head.appendChild(scriptV2);
+                    document.head.appendChild(nwcjsScript);
                 };
-                nwcjsScript.onerror = (e) => {
-                    console.error('❌ Failed to load nwcjs.js:', e);
+                nostrToolsScript.onerror = (e) => {
+                    console.error('❌ Failed to load nostr-tools.umd.js:', e);
                 };
-                document.head.appendChild(nwcjsScript);
+                document.head.appendChild(nostrToolsScript);
             }
         })();
     </script>
-    
-    <!-- Keep nostr-tools for backwards compatibility -->
-    <script src="nostr-tools.umd.js"></script>
-    <script type="module" src="/src/main.js"></script>
     
     <!-- IMMEDIATE KEYSEND FIX - Override sendKeysendWithNWC to use multi_pay_keysend -->
     <script>
@@ -498,7 +525,24 @@
              
              const sessionId = sessionStorage.getItem('v4v_session_id') || 'Not set';
              const cacheBustStatus = window.CACHE_BUST_PARAMS ? 'Active' : 'Inactive';
-             const scriptsStatus = typeof nwcjs !== 'undefined' && typeof window.sendKeysendWithNWC === 'function' ? 'Loaded' : 'Not Loaded';
+             
+             // Enhanced script status checking
+             let scriptsStatus = 'Checking...';
+             if (typeof nostr !== 'undefined') {
+                 scriptsStatus += ' nostr-tools✅';
+             } else {
+                 scriptsStatus += ' nostr-tools❌';
+             }
+             if (typeof nwcjs !== 'undefined') {
+                 scriptsStatus += ' nwcjs✅';
+             } else {
+                 scriptsStatus += ' nwcjs❌';
+             }
+             if (typeof window.sendKeysendWithNWC === 'function') {
+                 scriptsStatus += ' override✅';
+             } else {
+                 scriptsStatus += ' override❌';
+             }
              
              // Update UI
              document.getElementById('session-id').textContent = sessionId;
@@ -509,7 +553,10 @@
                  sessionId,
                  cacheBustStatus,
                  scriptsStatus,
-                 cacheBustParams: window.CACHE_BUST_PARAMS
+                 cacheBustParams: window.CACHE_BUST_PARAMS,
+                 nostrTools: typeof nostr !== 'undefined',
+                 nwcjs: typeof nwcjs !== 'undefined',
+                 override: typeof window.sendKeysendWithNWC === 'function'
              });
              
              return { sessionId, cacheBustStatus, scriptsStatus };
@@ -539,6 +586,17 @@
                  window.checkCacheStatus();
              }
          }, 5000);
+         
+         // Manual script loading trigger
+         window.forceLoadScripts = function() {
+             console.log('🚀 Manually triggering script loading...');
+             if (typeof loadScriptsWithCacheBusting === 'function') {
+                 loadScriptsWithCacheBusting();
+             } else {
+                 console.log('⚠️ Script loading function not available, reloading page...');
+                 window.location.reload();
+             }
+         };
          
          // Test override function
          window.testOverride = function() {
