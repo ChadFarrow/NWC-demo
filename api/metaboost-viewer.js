@@ -117,42 +117,42 @@ module.exports = function handler(req, res) {
                 return;
             }
             
-            container.innerHTML = boosts.map(boost => \`
+            container.innerHTML = boosts.map(boost => `
                 <div class="boost">
                     <div class="boost-header">
-                        <span>⚡ \${boost.amount} sats</span>
-                        <span>\${new Date(boost.timestamp).toLocaleString()}</span>
+                        <span>⚡ ${boost.amount} sats</span>
+                        <span>${new Date(boost.timestamp).toLocaleString()}</span>
                     </div>
                     <div class="field">
                         <span class="label">Boost ID:</span>
-                        <span class="value">\${boost.boostId || boost.id || 'N/A'}</span>
+                        <span class="value">${boost.boostId || boost.id || 'N/A'}</span>
                     </div>
                     <div class="field">
                         <span class="label">Podcast:</span>
-                        <span class="value">\${boost.podcast || 'Unknown'}</span>
+                        <span class="value">${boost.podcast || 'Unknown'}</span>
                     </div>
                     <div class="field">
                         <span class="label">Episode:</span>
-                        <span class="value">\${boost.episode || 'Unknown'}</span>
+                        <span class="value">${boost.episode || 'Unknown'}</span>
                     </div>
                     <div class="field">
                         <span class="label">Message:</span>
-                        <span class="value">\${boost.message || 'No message'}</span>
+                        <span class="value">${boost.message || 'No message'}</span>
                     </div>
                     <div class="field">
                         <span class="label">App:</span>
-                        <span class="value">\${boost.appName || 'Unknown'}</span>
+                        <span class="value">${boost.appName || 'Unknown'}</span>
                     </div>
                     <div class="field">
                         <span class="label">Sender:</span>
-                        <span class="value">\${boost.senderName || 'Anonymous'}</span>
+                        <span class="value">${boost.senderName || 'Anonymous'}</span>
                     </div>
                     <div class="field">
                         <span class="label">Payment Proof:</span>
                         <span class="value">
                             <details style="cursor: pointer;">
-                                <summary style="color: var(--accent-primary);">Click to view payment proof</summary>
-                                <pre style="background: var(--bg-primary); padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.8em; white-space: pre-wrap; word-break: break-all;">${boost.paymentProof || 'N/A'}</pre>
+                                <summary style="color: #0066cc;">Click to view payment proof</summary>
+                                <pre style="background: #2a2a2a; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.8em; white-space: pre-wrap; word-break: break-all;">${boost.paymentProof || 'N/A'}</pre>
                             </details>
                         </span>
                     </div>
@@ -169,7 +169,7 @@ module.exports = function handler(req, res) {
                         <span class="value">${boost.episodeGuid || 'N/A'}</span>
                     </div>
                 </div>
-            \`).join('');
+            `).join('');
         }
         
         // Load on page load
