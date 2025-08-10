@@ -765,13 +765,14 @@
                         <div class="value-block-item">
                             <label class="checkbox-label">
                                 <input type="checkbox" name="recipients" value="${block.value}" 
-                                       data-title="${block.title}" data-guid="${block.guid}" checked>
-                                <span class="checkbox-text">
-                                    <strong>${block.title}</strong>
-                                    <br><small>${block.value.substring(0, 50)}...</small>
-                                </span>
-                            </label>
-                        </div>
+                                       data-title="${block.title}" data-guid="${block.guid}" 
+                                       data-type="${block.type || 'metaBoost'}" data-block="${index}" checked>
+                            <span class="checkbox-text">
+                                <strong>${block.title}</strong>
+                                <br><small>${block.value.substring(0, 50)}...</small>
+                            </span>
+                        </label>
+                    </div>
                     `).join('')}
                 </div>
                 <p class="help-text">✅ Check the recipients you want to send payments to</p>
@@ -1030,7 +1031,7 @@
                 
                 // Get selected recipients from the parsed value blocks
                 const selectedRecipients = [];
-                const recipientCheckboxes = document.querySelectorAll('#recipient-checkboxes input[type="checkbox"]:checked');
+                const recipientCheckboxes = document.querySelectorAll('input[name="recipients"]:checked');
                 
                 if (recipientCheckboxes.length === 0) {
                     throw new Error('Please select at least one recipient from the parsed value blocks');
