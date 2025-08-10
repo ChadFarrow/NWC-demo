@@ -640,17 +640,87 @@ var nwcjs = {
         return events[ 0 ];
     },
     payKeysend: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
+<<<<<<< HEAD
         console.log('🔧 Using nwcjs.payKeysend method');
         console.log('🎯 Destination:', destination, 'Length:', destination.length);
         
         // Validate destination format
+=======
+        console.log('🔧 Using nwcjs.payKeysend method - FIXED VERSION');
+        console.log('Input destination:', destination, 'Length:', destination?.length);
+        
+        // Validate and normalize pubkey
+>>>>>>> d32f7a1 (Fix keysend error: validate pubkey format and use multiPayKeysend)
         if (!destination || typeof destination !== 'string') {
             throw new Error('Invalid destination: must be a non-empty string');
         }
         
+<<<<<<< HEAD
         if (destination.length !== 33 && destination.length !== 66 && destination.length !== 64) {
             throw new Error(`Invalid destination length: ${destination.length}. Expected 33, 64, or 66 characters.`);
         }
+=======
+        // Remove any whitespace and convert to lowercase
+        destination = destination.trim().toLowerCase();
+        
+        // Check if it's a valid hex string
+        if (!/^[0-9a-f]+$/.test(destination)) {
+            throw new Error('Invalid destination: must be a hex string');
+        }
+        
+        // Ensure proper length (33 bytes = 66 hex chars for compressed pubkey)
+        if (destination.length !== 66) {
+            if (destination.length === 64) {
+                // Add compression prefix if missing
+                destination = '02' + destination;
+                console.log('Added compression prefix, new destination:', destination);
+            } else {
+                throw new Error(`Invalid pubkey length: ${destination.length} (expected 66 characters for compressed pubkey)`);
+            }
+        }
+        
+        // Validate compression prefix
+        const prefix = destination.substring(0, 2);
+        if (prefix !== '02' && prefix !== '03') {
+            console.warn(`Unusual pubkey prefix: ${prefix} (expected 02 or 03)`);
+        }
+        
+        console.log('Using validated pubkey:', destination);
+        
+        // Use multi_pay_keysend which works better with Alby
+        console.log('Switching to multiPayKeysend for better compatibility...');
+        
+        const keysendArray = [{
+            pubkey: destination,
+            amount: amount * 1000, // Convert sats to msat
+            tlv_records: message ? [{
+                type: 34349334,
+                value: nwcjs.bytesToHex(new TextEncoder().encode(message))
+            }] : []
+        }];
+        
+        console.log('Calling multiPayKeysend with:', keysendArray);
+        
+        try {
+            const result = await nwcjs.multiPayKeysend(nwc_info, keysendArray, seconds_of_delay_tolerable);
+            console.log('multiPayKeysend result:', result);
+            
+            if (result && result.result) {
+                console.log('✅ Keysend successful');
+                return result;
+            } else if (result && result.error) {
+                throw new Error(`Keysend failed: ${JSON.stringify(result.error)}`);
+            } else {
+                throw new Error('Keysend failed: No result or error returned');
+            }
+        } catch (error) {
+            console.error('❌ Keysend error:', error);
+            throw error;
+        }
+    },
+    payKeysend_OLD: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
+        console.log('🔧 Using nwcjs.payKeysend_OLD method');
+>>>>>>> d32f7a1 (Fix keysend error: validate pubkey format and use multiPayKeysend)
         
         // Try different destination formats to work around the "invalid vertex length" issue
         var destinationFormats = [
@@ -658,9 +728,14 @@ var nwcjs = {
             { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
             { name: 'pubkey', value: destination, params: { pubkey: destination } },
             { name: 'node_id', value: destination, params: { node_id: destination } },
+<<<<<<< HEAD
             // Add more specific formats for common cases
             { name: 'compressed_pubkey', value: destination.length === 66 ? destination : '02' + destination, params: { destination: destination.length === 66 ? destination : '02' + destination } },
             { name: 'uncompressed_pubkey', value: destination.length === 66 ? destination : '04' + destination, params: { destination: destination.length === 66 ? destination : '04' + destination } }
+=======
+            { name: 'compressed_pubkey', value: destination.length === 66 ? destination : '02' + destination, params: { pubkey: destination.length === 66 ? destination : '02' + destination } },
+            { name: 'uncompressed_pubkey', value: destination.length === 64 ? '02' + destination : destination, params: { destination: destination.length === 64 ? '02' + destination : destination } }
+>>>>>>> d32f7a1 (Fix keysend error: validate pubkey format and use multiPayKeysend)
         ];
         
         console.log('Trying keysend with destination formats:', {

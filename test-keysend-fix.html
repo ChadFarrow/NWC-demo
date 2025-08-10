@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Keysend Fix Test</title>
+    <style>
+        body {
+            font-family: monospace;
+            padding: 20px;
+            background: #1a1a1a;
+            color: #0f0;
+        }
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        input, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            background: #222;
+            color: #0f0;
+            border: 1px solid #0f0;
+        }
+        button:hover {
+            background: #333;
+            cursor: pointer;
+        }
+        .output {
+            background: #111;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+            font-size: 12px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .success { color: #0f0; }
+        .error { color: #f00; }
+        .info { color: #ff0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔧 Keysend Fix Test</h1>
+        
+        <input type="text" id="nwc-string" placeholder="Enter your NWC string (nostr+walletconnect://...)" />
+        
+        <input type="text" id="test-pubkey" value="02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619" placeholder="Test pubkey" />
+        
+        <input type="number" id="test-amount" value="1" placeholder="Amount in sats" />
+        
+        <button onclick="testKeysendDirect()">Test Direct payKeysend</button>
+        <button onclick="testMultiKeysend()">Test multiPayKeysend</button>
+        <button onclick="clearOutput()">Clear Output</button>
+        
+        <div id="output" class="output"></div>
+    </div>
+
+    <!-- Load nostr-tools -->
+    <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
+    <script src="https://bundle.run/bech32@2.0.0"></script>
+    <script src="nostr-tools.umd.js"></script>
+    <script src="nwcjs.js"></script>
+    
+    <script>
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toISOString().split('T')[1];
+            const className = type;
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+            console.log(message);
+        }
+        
+        function clearOutput() {
+            output.innerHTML = '';
+            log('Output cleared', 'info');
+        }
+        
+        async function testKeysendDirect() {
+            log('=== Testing Direct payKeysend (FIXED VERSION) ===', 'info');
+            
+            const nwcString = document.getElementById('nwc-string').value.trim();
+            const testPubkey = document.getElementById('test-pubkey').value.trim();
+            const testAmount = parseInt(document.getElementById('test-amount').value);
+            
+            if (!nwcString) {
+                log('ERROR: Please enter NWC string', 'error');
+                return;
+            }
+            
+            try {
+                log(`Processing NWC string...`, 'info');
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                log(`NWC info extracted successfully`, 'success');
+                
+                log(`Testing with pubkey: ${testPubkey}`, 'info');
+                log(`Amount: ${testAmount} sats`, 'info');
+                
+                const result = await nwcjs.payKeysend(nwcInfo, testPubkey, testAmount, 'Test keysend - fixed version');
+                
+                if (result && result.result) {
+                    log(`✅ KEYSEND SUCCESS!`, 'success');
+                    log(`Result: ${JSON.stringify(result, null, 2)}`, 'success');
+                } else if (result && result.error) {
+                    log(`❌ Keysend failed: ${JSON.stringify(result.error)}`, 'error');
+                } else {
+                    log(`❌ Unexpected result: ${JSON.stringify(result)}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        async function testMultiKeysend() {
+            log('=== Testing multiPayKeysend ===', 'info');
+            
+            const nwcString = document.getElementById('nwc-string').value.trim();
+            const testPubkey = document.getElementById('test-pubkey').value.trim();
+            const testAmount = parseInt(document.getElementById('test-amount').value);
+            
+            if (!nwcString) {
+                log('ERROR: Please enter NWC string', 'error');
+                return;
+            }
+            
+            try {
+                log(`Processing NWC string...`, 'info');
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                log(`NWC info extracted successfully`, 'success');
+                
+                const keysendArray = [{
+                    pubkey: testPubkey,
+                    amount: testAmount * 1000, // msat
+                    tlv_records: [{
+                        type: 34349334,
+                        value: nwcjs.bytesToHex(new TextEncoder().encode('Test multi-keysend'))
+                    }]
+                }];
+                
+                log(`Keysend array: ${JSON.stringify(keysendArray, null, 2)}`, 'info');
+                
+                const result = await nwcjs.multiPayKeysend(nwcInfo, keysendArray, 20);
+                
+                if (result && result.result) {
+                    log(`✅ MULTI-KEYSEND SUCCESS!`, 'success');
+                    log(`Result: ${JSON.stringify(result, null, 2)}`, 'success');
+                } else if (result && result.error) {
+                    log(`❌ Multi-keysend failed: ${JSON.stringify(result.error)}`, 'error');
+                } else {
+                    log(`❌ Unexpected result: ${JSON.stringify(result)}`, 'error');
+                }
+                
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                log(`Stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        // Initialize
+        window.addEventListener('load', () => {
+            log('🚀 Keysend Fix Test Ready', 'success');
+            log('This test uses the FIXED payKeysend that internally calls multiPayKeysend', 'info');
+            
+            // Check if libraries loaded
+            if (typeof nwcjs !== 'undefined') {
+                log('✅ nwcjs loaded', 'success');
+            } else {
+                log('❌ nwcjs not loaded', 'error');
+            }
+            
+            if (typeof NostrTools !== 'undefined') {
+                log('✅ NostrTools loaded', 'success');
+                window.nostrTools = NostrTools;
+                window.nostr = NostrTools;
+            } else {
+                log('❌ NostrTools not loaded', 'error');
+            }
+        });
+    </script>
+</body>
+</html>
