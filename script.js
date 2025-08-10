@@ -2340,7 +2340,8 @@ async function payInvoiceWithNWC(nwcString, invoice) {
 async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
     const requestId = Date.now() + '-' + Math.random().toString(36).substr(2, 9);
     console.log(`🔑 Sending keysend with NWC... (Request ID: ${requestId})`);
-    console.log(`Target: ${pubkey.substring(0, 16)}...`);
+    console.log(`Target: ${pubkey.substring(0, 16)}... (length: ${pubkey.length})`);
+    console.log(`Full pubkey: ${pubkey}`);
     console.log(`Amount: ${amount} sats`);
     
     try {
@@ -2361,15 +2362,30 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
             // Create the keysend payment request manually
             console.log('Sending keysend payment request...');
             
+            // Ensure pubkey is in correct format (66 hex chars = compressed format)
+            let destination = pubkey;
+            if (pubkey.length === 66) {
+                // Already in compressed format (02/03 prefix + 64 hex chars)
+                destination = pubkey;
+                console.log('Using compressed pubkey format:', destination.substring(0, 16) + '...');
+            } else if (pubkey.length === 64) {
+                // Missing prefix - this shouldn't happen but handle it
+                destination = '02' + pubkey; // Assume 02 prefix
+                console.log('Added prefix to pubkey:', destination.substring(0, 16) + '...');
+            } else {
+                throw new Error(`Invalid pubkey length: ${pubkey.length}, expected 66 characters`);
+            }
+            
             const msg = {
                 method: "pay_keysend",
                 params: {
-                    destination: pubkey,
+                    destination: destination,
                     amount: amount * 1000, // Convert sats to msat
                     message: message || ''
                 }
             };
             const msgJson = JSON.stringify(msg);
+            console.log('Keysend request payload:', msg);
             const encrypted = await nwcjs.encrypt(nwcInfo.app_privkey, nwcInfo.wallet_pubkey, msgJson);
             
             const event = {
