@@ -121,11 +121,77 @@
     <!-- Bech32 for address encoding -->
     <script src="https://bundle.run/bech32@2.0.0"></script>
     <!-- NWC JS library for proper NWC implementation -->
-    <script src="nwcjs.js?v=20250810-fixed&t=1754840000"></script>
+    <script src="nwcjs.js?v=20250810-final&t=1728567999&cb=fix_now"></script>
     <!-- Keep nostr-tools for backwards compatibility -->
     <script src="nostr-tools.umd.js"></script>
     <script type="module" src="/src/main.js"></script>
-    <script src="script.js?v=20250810-fixed&t=1754840000"></script>
+    <script src="script.js?v=20250810-final&t=1728567999&cb=fix_now"></script>
+    
+    <!-- IMMEDIATE KEYSEND FIX - Override sendKeysendWithNWC to use multi_pay_keysend -->
+    <script>
+        console.log('🚀 Loading immediate keysend fix override...');
+        
+        // Override sendKeysendWithNWC function immediately when page loads
+        window.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                // Override the sendKeysendWithNWC function with working multi_pay_keysend version
+                window.sendKeysendWithNWC = async function(nwcString, pubkey, amount, message) {
+                    console.log('🔧 [OVERRIDE] Using working multi_pay_keysend method');
+                    console.log(`Target: ${pubkey.substring(0, 16)}... Amount: ${amount} sats`);
+                    
+                    try {
+                        if (typeof nwcjs === 'undefined') {
+                            throw new Error('nwcjs library not loaded');
+                        }
+                        
+                        // Get or create NWC info
+                        let nwcInfo = nwcjs.nwc_infos.find(info => 
+                            nwcString.includes(info.wallet_pubkey) && nwcString.includes(info.relay)
+                        );
+                        
+                        if (!nwcInfo) {
+                            nwcInfo = nwcjs.processNWCstring(nwcString);
+                        }
+                        
+                        // Use multi_pay_keysend since pay_keysend is broken in Alby
+                        const keysendArray = [{
+                            pubkey: pubkey,
+                            amount: amount * 1000, // msat
+                            tlv_records: [{
+                                type: 34349334,
+                                value: nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
+                            }]
+                        }];
+                        
+                        const result = await nwcjs.multiPayKeysend(nwcInfo, keysendArray, 20);
+                        console.log('🔧 Multi-keysend result:', result);
+                        
+                        if (result && result.result) {
+                            return {
+                                success: true,
+                                preimage: result.result.preimage || 'keysend_sent',
+                                result: result
+                            };
+                        } else {
+                            return {
+                                success: false,
+                                error: result?.error?.message || 'Keysend payment failed',
+                                result: result
+                            };
+                        }
+                    } catch (error) {
+                        console.error('❌ Keysend override error:', error);
+                        return {
+                            success: false,
+                            error: error.message
+                        };
+                    }
+                };
+                
+                console.log('✅ sendKeysendWithNWC override installed');
+            }, 2000); // Wait 2 seconds for other scripts to load
+        });
+    </script>
     
     <!-- Standalone MetaBoost Handler v2 -->
     <script>
