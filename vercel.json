@@ -1,4 +1,47 @@
 {
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/**/*.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "public/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.xml",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.png",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.css",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.txt",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.json",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "src/**/*",
+      "use": "@vercel/static"
+    }
+  ],
   "functions": {
     "api/*.js": {
       "runtime": "@vercel/node@3.0.0"
@@ -9,7 +52,51 @@
     { "source": "/dashboard.html", "destination": "/public/dashboard.html" },
     { "source": "/dashboard", "destination": "/public/dashboard.html" },
     { "source": "/metaboost-dashboard", "destination": "/public/metaboost-dashboard.html" },
-    { "source": "/metaboost-dashboard.html", "destination": "/public/metaboost-dashboard.html" }
+    { "source": "/metaboost-dashboard.html", "destination": "/public/metaboost-dashboard.html" },
+    { "source": "/api/metaboost", "destination": "/api/metaboost.js" },
+    { "source": "/api/metaboost-viewer", "destination": "/api/metaboost-viewer.js" },
+    { "source": "/api/metaboost-v2", "destination": "/api/metaboost-v2.js" },
+    { "source": "/api/dashboard", "destination": "/api/dashboard.js" },
+    { "source": "/favicon.ico", "destination": "/public/favicon.png" },
+    { "source": "/logo", "destination": "/public/logo.png" }
+  ],
+  "headers": [
+    {
+      "source": "/(.*\\.js)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.xml)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/xml"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.html)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/html"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.css)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "text/css"
+        }
+      ]
+    }
   ],
   "engines": {
     "node": "18.x"

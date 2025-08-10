@@ -21,8 +21,7 @@ module.exports = function handler(req, res) {
 
   if (req.method === 'GET') {
     // Return HTML viewer page
-    const html = `
-<!DOCTYPE html>
+    const html = `<!DOCTYPE html>
 <html>
 <head>
     <title>MetaBoost Viewer</title>
@@ -116,74 +115,73 @@ module.exports = function handler(req, res) {
             const container = document.getElementById('boosts');
             const count = document.getElementById('count');
             
-            count.textContent = `(${boosts.length} boosts)`;
+            count.textContent = '(' + boosts.length + ' boosts)';
             
             if (boosts.length === 0) {
                 container.innerHTML = '<div class="empty">No boosts received yet. Send a metaBoost to see it here!</div>';
                 return;
             }
             
-            container.innerHTML = boosts.map(boost => `
-                <div class="boost">
-                    <div class="boost-header">
-                        <span>⚡ ${boost.amount} sats</span>
-                        <span>${new Date(boost.timestamp).toLocaleString()}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Boost ID:</span>
-                        <span class="value">${boost.boostId || boost.id || 'N/A'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Podcast:</span>
-                        <span class="value">${boost.podcast || 'Unknown'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Episode:</span>
-                        <span class="value">${boost.episode || 'Unknown'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Message:</span>
-                        <span class="value">${boost.message || 'No message'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">App:</span>
-                        <span class="value">${boost.appName || 'Unknown'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Sender:</span>
-                        <span class="value">${boost.senderName || 'Anonymous'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Payment Proof:</span>
-                        <span class="value">
-                            <details style="cursor: pointer;">
-                                <summary style="color: #0066cc;">Click to view payment proof</summary>
-                                <pre style="background: #2a2a2a; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.8em; white-space: pre-wrap; word-break: break-all;">${boost.paymentProof || 'N/A'}</pre>
-                            </details>
-                        </span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Recipients:</span>
-                        <span class="value">${Array.isArray(boost.recipients) ? boost.recipients.join(', ') : boost.recipients || 'N/A'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Feed URL:</span>
-                        <span class="value">${boost.feedUrl || 'N/A'}</span>
-                    </div>
-                    <div class="field">
-                        <span class="label">Episode GUID:</span>
-                        <span class="value">${boost.episodeGuid || 'N/A'}</span>
-                    </div>
-                </div>
-            `).join('');
+            container.innerHTML = boosts.map(function(boost) {
+                return '<div class="boost">' +
+                    '<div class="boost-header">' +
+                        '<span>⚡ ' + (boost.amount || 'N/A') + ' sats</span>' +
+                        '<span>' + new Date(boost.timestamp).toLocaleString() + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Boost ID:</span>' +
+                        '<span class="value">' + (boost.boostId || boost.id || 'N/A') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Podcast:</span>' +
+                        '<span class="value">' + (boost.podcast || 'Unknown') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Episode:</span>' +
+                        '<span class="value">' + (boost.episode || 'Unknown') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Message:</span>' +
+                        '<span class="value">' + (boost.message || 'No message') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">App:</span>' +
+                        '<span class="value">' + (boost.appName || 'Unknown') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Sender:</span>' +
+                        '<span class="value">' + (boost.senderName || 'Anonymous') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Payment Proof:</span>' +
+                        '<span class="value">' +
+                            '<details style="cursor: pointer;">' +
+                                '<summary style="color: #0066cc;">Click to view payment proof</summary>' +
+                                '<pre style="background: #2a2a2a; padding: 0.5rem; border-radius: 4px; margin-top: 0.5rem; font-size: 0.8em; white-space: pre-wrap; word-break: break-all;">' + (boost.paymentProof || 'N/A') + '</pre>' +
+                            '</details>' +
+                        '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Recipients:</span>' +
+                        '<span class="value">' + (Array.isArray(boost.recipients) ? boost.recipients.join(', ') : boost.recipients || 'N/A') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Feed URL:</span>' +
+                        '<span class="value">' + (boost.feedUrl || 'N/A') + '</span>' +
+                    '</div>' +
+                    '<div class="field">' +
+                        '<span class="label">Episode GUID:</span>' +
+                        '<span class="value">' + (boost.episodeGuid || 'N/A') + '</span>' +
+                    '</div>' +
+                '</div>';
+            }).join('');
         }
         
         // Load on page load
         fetchBoosts();
     </script>
 </body>
-</html>
-    `;
+</html>`;
     
     res.setHeader('Content-Type', 'text/html');
     res.status(200).send(html);
@@ -215,4 +213,4 @@ module.exports = function handler(req, res) {
   }
   
   res.status(405).json({ error: 'Method not allowed' });
-}
+};

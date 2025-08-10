@@ -142,7 +142,7 @@ module.exports = function handler(req, res) {
     }
     
     const processedBoost = {
-      id: \`boost_\${Date.now()}_\${Math.random().toString(36).substr(2, 9)}\`,
+      id: 'boost_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       timestamp: new Date().toISOString(),
       amount,
       paymentProof,
