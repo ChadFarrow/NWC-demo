@@ -1113,9 +1113,66 @@ async function waitForNostrTools() {
   }
 }
 
-// --- Minimal NIP-47 keysend for browser (using nostr-tools NIP-04) ---
+// --- Send payment using nwcjs ---
+async function sendNWCPaymentWithNWCJS(nwcString, destination, amount, message) {
+    console.log(`\n=== NWC Payment with NWCJS ===`);
+    console.log(`Destination: ${destination}`);
+    console.log(`Amount: ${amount} sats`);
+    console.log(`Message: ${message}`);
+    
+    try {
+        // Process NWC string if not already processed
+        let nwcInfo = nwcjs.nwc_infos.find(info => 
+            nwcString.includes(info.wallet_pubkey) && nwcString.includes(info.relay)
+        );
+        
+        if (!nwcInfo) {
+            nwcInfo = nwcjs.processNWCstring(nwcString);
+            console.log('Processed new NWC connection');
+        }
+        
+        // Create an invoice first (if destination is not already a bolt11 invoice)
+        let invoice;
+        if (destination.toLowerCase().startsWith('lnbc')) {
+            invoice = destination;
+            console.log('Using provided invoice');
+        } else {
+            // For keysend, we might need to create invoice differently
+            // For now, try to pay to a lightning address
+            console.log('Creating invoice for destination:', destination);
+            invoice = await nwcjs.makeInvoice(nwcInfo, amount * 1000, `Payment to ${destination}: ${message}`);
+            console.log('Created invoice:', invoice);
+        }
+        
+        // Try to pay the invoice
+        console.log('Attempting payment...');
+        const result = await nwcjs.tryToPayInvoice(nwcInfo, invoice, amount * 1000);
+        console.log('Payment result:', result);
+        
+        return {
+            success: true,
+            preimage: result.preimage || 'payment_sent',
+            result: result
+        };
+    } catch (error) {
+        console.error('NWCJS payment error:', error);
+        return {
+            success: false,
+            error: error.message || 'Payment failed'
+        };
+    }
+}
+
+// --- Minimal NIP-47 keysend for browser (legacy) ---
 async function sendNWCKeysendMinimal(nwcString, destination, amount, message) {
-    console.log(`\n=== NWC Keysend Payment Start ===`);
+    console.log(`\n=== NWC Keysend Payment (Legacy) ===`);
+    
+    // Try nwcjs first if available
+    if (typeof nwcjs !== 'undefined') {
+        console.log('NWCJS library available, using it for payment');
+        return sendNWCPaymentWithNWCJS(nwcString, destination, amount, message);
+    }
+    
     console.log(`Destination: ${destination}`);
     console.log(`Amount: ${amount} sats`);
     console.log(`Message: ${message}`);
@@ -1572,10 +1629,51 @@ async function nip04Encrypt(privateKey, publicKey, text) {
     }
 }
 
-// Test wallet capabilities with a real get_info request
+// Test wallet capabilities using nwcjs
+async function testWalletCapabilitiesWithNWCJS(nwcString) {
+    console.log('\n=== Testing Wallet with NWCJS ===');
+    
+    try {
+        // Process the NWC string
+        const nwcInfo = nwcjs.processNWCstring(nwcString);
+        console.log('Processed NWC info:', {
+            wallet_pubkey: nwcInfo.wallet_pubkey,
+            relay: nwcInfo.relay,
+            app_pubkey: nwcInfo.app_pubkey
+        });
+        
+        // Get wallet info
+        console.log('Getting wallet info...');
+        const info = await nwcjs.getInfo(nwcInfo);
+        console.log('Wallet info received:', info);
+        
+        // Check balance
+        console.log('Getting wallet balance...');
+        const balance = await nwcjs.getBalance(nwcInfo);
+        console.log('Wallet balance:', balance);
+        
+        return {
+            success: true,
+            info: info,
+            balance: balance,
+            nwcInfo: nwcInfo
+        };
+    } catch (error) {
+        console.error('NWCJS error:', error);
+        throw error;
+    }
+}
+
+// Test wallet capabilities with a real get_info request (legacy)
 async function testWalletCapabilities(nwcString) {
-    console.log('\n=== Testing Wallet Capabilities ===');
+    console.log('\n=== Testing Wallet Capabilities (Legacy) ===');
     console.log('NWC string length:', nwcString.length);
+    
+    // Try nwcjs first
+    if (typeof nwcjs !== 'undefined') {
+        console.log('NWCJS library available, using it instead');
+        return testWalletCapabilitiesWithNWCJS(nwcString);
+    }
     
     try {
         const url = new URL(nwcString.replace('nostr+walletconnect://', 'https://'));
