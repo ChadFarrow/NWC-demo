@@ -2435,9 +2435,20 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                     result: result
                 };
             } else {
+                let errorMsg = result?.error?.message || result?.error || 'Keysend payment failed';
+                
+                // Improve error messages for common keysend failures
+                if (errorMsg.includes('invalid vertex length of 0')) {
+                    errorMsg = 'Node not found in Lightning Network (may be offline or unreachable)';
+                } else if (errorMsg.includes('unable to find a path')) {
+                    errorMsg = 'No route found to destination node';
+                } else if (errorMsg.includes('insufficient capacity')) {
+                    errorMsg = 'Insufficient channel capacity for payment';
+                }
+                
                 return {
                     success: false,
-                    error: result?.error?.message || result?.error || 'Keysend payment failed'
+                    error: errorMsg
                 };
             }
         }
