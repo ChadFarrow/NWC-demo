@@ -3102,8 +3102,42 @@ console.log('nostr available:', typeof window.nostr !== 'undefined');
 
 // ===== Main Script Functions =====
 
-// Test basic functionality on page load
-window.addEventListener('DOMContentLoaded', () => {
+// Wait for nostr-tools to be loaded before running tests
+async function waitForNostrToolsAndTest() {
+    // Listen for the nostrToolsReady event
+    window.addEventListener('nostrToolsReady', () => {
+        console.log('✅ nostr-tools ready event received, running tests...');
+        runBasicFunctionalityTest();
+    });
+    
+    // Also check if it's already loaded (in case the event was fired before we set up the listener)
+    if (typeof window.nostrTools !== 'undefined' && 
+        typeof window.nostrTools.nip04 !== 'undefined' &&
+        typeof window.nostrTools.getPublicKey !== 'undefined') {
+        
+        console.log('✅ nostr-tools already loaded, running tests immediately...');
+        runBasicFunctionalityTest();
+        return;
+    }
+    
+    // Fallback: wait up to 5 seconds if event doesn't fire
+    setTimeout(() => {
+        if (typeof window.nostrTools !== 'undefined' && 
+            typeof window.nostrTools.nip04 !== 'undefined' &&
+            typeof window.nostrTools.getPublicKey !== 'undefined') {
+            
+            console.log('✅ nostr-tools loaded via timeout, running tests...');
+            runBasicFunctionalityTest();
+        } else {
+            console.error('❌ nostr-tools failed to load within timeout');
+            console.log('💡 This will prevent NWC functionality from working.');
+            console.log('💡 Check the network tab to see if the CDN script failed to load.');
+        }
+    }, 5000);
+}
+
+// Test basic functionality once nostr-tools is loaded
+function runBasicFunctionalityTest() {
     console.log('🚀 Page loaded, testing basic functionality...');
     
     // Test if nostr-tools is available
@@ -3130,4 +3164,10 @@ window.addEventListener('DOMContentLoaded', () => {
     }
     
     console.log('🎯 Basic functionality test complete');
+}
+
+// Test basic functionality on page load
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Page loaded, waiting for nostr-tools...');
+    waitForNostrToolsAndTest();
 });

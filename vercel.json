@@ -24,13 +24,17 @@
     {
       "src": "api/index.js",
       "use": "@vercel/node"
+    },
+    {
+      "src": "api/metaboost.js",
+      "use": "@vercel/node"
+    },
+    {
+      "src": "api/metaboost-viewer.js",
+      "use": "@vercel/node"
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/index.js"
-    },
     {
       "source": "/src/(.*)",
       "destination": "/src/$1"

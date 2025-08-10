@@ -1411,7 +1411,88 @@ window.addEventListener('DOMContentLoaded', () => {
             }
         }
     });
+    
+    // Load existing boosts from localStorage
+    loadStoredBoosts();
 });
+
+// Load and display stored boosts
+function loadStoredBoosts() {
+    try {
+        const stored = localStorage.getItem('metaboosts');
+        if (stored) {
+            const storedBoosts = JSON.parse(stored);
+            if (storedBoosts.length > 0) {
+                // Display the boost history section
+                displayMetaBoostHistory(storedBoosts);
+            }
+        }
+    } catch (e) {
+        console.error('Failed to load stored boosts:', e);
+    }
+}
+
+// Helper function to display boost history
+function displayMetaBoostHistory(storedBoosts) {
+    const container = document.getElementById('payment-form-container');
+    if (!container) return;
+    
+    // Create or update boost history section
+    let historySection = document.getElementById('boost-history');
+    if (!historySection) {
+        historySection = document.createElement('div');
+        historySection.id = 'boost-history';
+        historySection.innerHTML = '<h3 style="margin-top: 2rem; color: var(--accent-primary);">📜 Recent MetaBoosts</h3>';
+        container.appendChild(historySection);
+    }
+    
+    // Display all recent boosts
+    const boostList = document.createElement('div');
+    boostList.innerHTML = storedBoosts.map((boost, index) => `
+        <div class="metaBoost-result" style="
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <h4 style="margin: 0; color: var(--text-secondary);">
+                    ⚡ ${boost.amount} sats
+                </h4>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">
+                    ${new Date(boost.timestamp || boost.receivedAt).toLocaleString()}
+                </span>
+            </div>
+            <div style="display: grid; gap: 0.5rem; font-size: 0.95rem;">
+                <div><strong>Podcast:</strong> ${boost.podcast}</div>
+                <div><strong>Episode:</strong> ${boost.episode}</div>
+                ${boost.message ? `<div><strong>Message:</strong> <em style="color: var(--accent-primary);">"${boost.message}"</em></div>` : ''}
+                <div><strong>Boost ID:</strong> <code style="font-size: 0.85rem;">${boost.boostId}</code></div>
+                <details style="margin-top: 0.5rem;">
+                    <summary style="cursor: pointer; color: var(--accent-primary);">View Details</summary>
+                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
+                        <div><strong>Payment Proof:</strong> <code>${boost.paymentProof.substring(0, 30)}...</code></div>
+                        <div><strong>Recipients:</strong> ${boost.recipients.join(', ')}</div>
+                        <div><strong>App:</strong> ${boost.appName}</div>
+                        <div><strong>Sender:</strong> ${boost.senderName}</div>
+                        <div><strong>Action:</strong> ${boost.action}</div>
+                        <div><strong>Value (msat):</strong> ${boost.value_msat}</div>
+                    </div>
+                </details>
+            </div>
+        </div>
+    `).join('');
+    
+    // Replace existing boost list
+    const existingList = historySection.querySelector('.boost-list');
+    if (existingList) {
+        existingList.remove();
+    }
+    boostList.className = 'boost-list';
+    historySection.appendChild(boostList);
+}
 
 // Test relay connectivity with more detailed diagnostics
 window.testRelayConnection = async function testRelayConnection() {
@@ -2660,41 +2741,104 @@ async function sendMetaBoostMetadata(event) {
 function displayMetaBoostResult(result, sentData) {
     const container = document.getElementById('payment-form-container');
     
-    // Create result display
-    const resultDiv = document.createElement('div');
-    resultDiv.className = 'metaBoost-result';
-    resultDiv.style.cssText = `
-        margin-top: 1rem;
-        padding: 1rem;
-        background: var(--card-bg);
-        border: 1px solid var(--accent-success);
-        border-radius: 8px;
-        color: var(--text-color);
-    `;
+    // Store boost in localStorage for persistence
+    let storedBoosts = [];
+    try {
+        const stored = localStorage.getItem('metaboosts');
+        if (stored) storedBoosts = JSON.parse(stored);
+    } catch (e) {
+        console.error('Failed to load stored boosts:', e);
+    }
     
-    resultDiv.innerHTML = `
-        <h4>✅ metaBoost Sent Successfully</h4>
-        <p><strong>Podcast:</strong> ${sentData.podcast}</p>
-        <p><strong>Episode:</strong> ${sentData.episode}</p>
-        <p><strong>Amount:</strong> ${sentData.amount} sats (${sentData.value_msat} msat)</p>
-        <p><strong>Message:</strong> ${sentData.message || 'None'}</p>
-        <p><strong>Boost ID:</strong> ${sentData.boostId}</p>
-        <p><strong>Payment Proof:</strong> ${sentData.paymentProof.substring(0, 20)}...</p>
-        <p><strong>Recipients:</strong> ${sentData.recipients.join(', ')}</p>
-        <p><strong>App:</strong> ${sentData.appName}</p>
-        <p><strong>Timestamp:</strong> ${new Date(sentData.timestamp).toLocaleString()}</p>
-        <p><strong>API Response:</strong> ${result.message}</p>
-    `;
+    // Add new boost to the beginning
+    storedBoosts.unshift({
+        ...sentData,
+        apiResponse: result,
+        receivedAt: new Date().toISOString()
+    });
     
-    // Add to container
-    container.appendChild(resultDiv);
+    // Keep only last 20 boosts
+    if (storedBoosts.length > 20) {
+        storedBoosts = storedBoosts.slice(0, 20);
+    }
     
-    // Remove after 10 seconds
-    setTimeout(() => {
-        if (resultDiv.parentNode) {
-            resultDiv.parentNode.removeChild(resultDiv);
-        }
-    }, 10000);
+    // Save to localStorage
+    try {
+        localStorage.setItem('metaboosts', JSON.stringify(storedBoosts));
+    } catch (e) {
+        console.error('Failed to save boost:', e);
+    }
+    
+    // Create or update boost history section
+    let historySection = document.getElementById('boost-history');
+    if (!historySection) {
+        historySection = document.createElement('div');
+        historySection.id = 'boost-history';
+        historySection.innerHTML = '<h3 style="margin-top: 2rem; color: var(--accent-primary);">📜 Recent MetaBoosts</h3>';
+        container.appendChild(historySection);
+    }
+    
+    // Display all recent boosts
+    const boostList = document.createElement('div');
+    boostList.innerHTML = storedBoosts.map((boost, index) => `
+        <div class="metaBoost-result" style="
+            margin-top: 1rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border: 1px solid ${index === 0 ? 'var(--accent-success)' : 'var(--border-color)'};
+            border-radius: 8px;
+            color: var(--text-primary);
+            ${index === 0 ? 'animation: pulse 0.5s ease;' : ''}
+        ">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                <h4 style="margin: 0; color: ${index === 0 ? 'var(--accent-success)' : 'var(--text-secondary)'};">
+                    ${index === 0 ? '✅ NEW' : '⚡'} ${boost.amount} sats
+                </h4>
+                <span style="color: var(--text-muted); font-size: 0.9rem;">
+                    ${new Date(boost.timestamp || boost.receivedAt).toLocaleString()}
+                </span>
+            </div>
+            <div style="display: grid; gap: 0.5rem; font-size: 0.95rem;">
+                <div><strong>Podcast:</strong> ${boost.podcast}</div>
+                <div><strong>Episode:</strong> ${boost.episode}</div>
+                ${boost.message ? `<div><strong>Message:</strong> <em style="color: var(--accent-primary);">"${boost.message}"</em></div>` : ''}
+                <div><strong>Boost ID:</strong> <code style="font-size: 0.85rem;">${boost.boostId}</code></div>
+                <details style="margin-top: 0.5rem;">
+                    <summary style="cursor: pointer; color: var(--accent-primary);">View Details</summary>
+                    <div style="margin-top: 0.5rem; padding: 0.5rem; background: var(--bg-primary); border-radius: 4px;">
+                        <div><strong>Payment Proof:</strong> <code>${boost.paymentProof.substring(0, 30)}...</code></div>
+                        <div><strong>Recipients:</strong> ${boost.recipients.join(', ')}</div>
+                        <div><strong>App:</strong> ${boost.appName}</div>
+                        <div><strong>Sender:</strong> ${boost.senderName}</div>
+                        <div><strong>Action:</strong> ${boost.action}</div>
+                        <div><strong>Value (msat):</strong> ${boost.value_msat}</div>
+                    </div>
+                </details>
+            </div>
+        </div>
+    `).join('');
+    
+    // Replace existing boost list
+    const existingList = historySection.querySelector('.boost-list');
+    if (existingList) {
+        existingList.remove();
+    }
+    boostList.className = 'boost-list';
+    historySection.appendChild(boostList);
+    
+    // Add CSS animation if not already present
+    if (!document.getElementById('boost-animations')) {
+        const style = document.createElement('style');
+        style.id = 'boost-animations';
+        style.textContent = `
+            @keyframes pulse {
+                0% { transform: scale(1); }
+                50% { transform: scale(1.02); }
+                100% { transform: scale(1); }
+            }
+        `;
+        document.head.appendChild(style);
+    }
 }
 
 // Make function globally available
