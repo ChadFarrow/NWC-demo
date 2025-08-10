@@ -1,5 +1,11 @@
 // V4V Lightning Payment Tester - Main Script
 // Refactored for clarity and maintainability
+// 
+// 🔑 ARCHITECTURE: NWC strings work independently without browser extensions
+// - Uses local nostr-tools for NIP-04 encryption
+// - Direct WebSocket communication with Nostr relays
+// - No Alby or other browser extensions required
+// - Secure end-to-end communication with your Lightning wallet
 
 // --- Theme Toggle ---
 function toggleTheme() {
@@ -1719,8 +1725,8 @@ async function testWalletCapabilities(nwcString) {
         console.log('nip04 object:', window.nostrTools.nip04);
         console.log('nip04 functions available:', window.nostrTools.nip04 ? Object.getOwnPropertyNames(window.nostrTools.nip04) : []);
         
-        // 🔒 BROWSER EXTENSIONS DISABLED - Using local nostr-tools only
-        console.log('🔒 Browser extensions disabled - using local nostr-tools only');
+        // 🔒 Using local nostr-tools for NWC encryption - no browser extensions needed
+        console.log('🔒 Using local nostr-tools for NWC encryption - no browser extensions needed');
         
         if (!window.nostrTools.nip04) {
             throw new Error('nostr-tools nip04 module not available');
@@ -1771,12 +1777,12 @@ async function testWalletCapabilities(nwcString) {
         let encrypted;
         
         try {
-            // For NWC, we should NOT use the browser extension - we need to use the provided secret key
-            // We need to implement our own NIP-04 encryption since the library version isn't working
-            console.log('Implementing NIP-04 encryption for NWC...');
-            
-            // 🔒 BROWSER EXTENSIONS DISABLED - Using local nostr-tools only
-            console.log('🔒 Browser extensions disabled - using local nostr-tools only');
+                    // For NWC, we use the provided secret key for direct wallet communication
+        // We implement NIP-04 encryption locally for secure wallet communication
+        console.log('Implementing NIP-04 encryption for NWC...');
+        
+        // 🔒 Using local nostr-tools for NWC encryption - no browser extensions needed
+        console.log('🔒 Using local nostr-tools for NWC encryption - no browser extensions needed');
             
             // Check what's actually available in nostrTools
             console.log('Checking nostrTools for encryption methods...');
@@ -2375,7 +2381,7 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
             alert(`🔍 WALLET METHODS DEBUG:\n\nSupported: ${supportedMethods.join(', ')}\n\nContains pay_keysend: ${supportedMethods.includes('pay_keysend')}`);
             
             if (!supportedMethods.includes('pay_keysend')) {
-                alert(`❌ KEYSEND NOT SUPPORTED!\n\nYour Alby wallet doesn't support pay_keysend.\nSupported methods: ${supportedMethods.join(', ')}`);
+                alert(`❌ KEYSEND NOT SUPPORTED!\n\nYour wallet doesn't support pay_keysend.\nSupported methods: ${supportedMethods.join(', ')}`);
             }
             
             if (!supportedMethods.includes('pay_keysend')) {
@@ -2394,7 +2400,7 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 message: message || ''
             });
             
-            // Use multi_pay_keysend since pay_keysend has issues with Alby
+            // Use multi_pay_keysend for better compatibility with various wallet implementations
             console.log('🔧 Using multi_pay_keysend for single keysend payment');
             const keysendArray = [{
                 pubkey: destination,
@@ -3482,8 +3488,8 @@ window.podpay = {
 };
 
 // ===== nostr-tools Initialization =====
-// 🔒 BROWSER EXTENSIONS DISABLED - Using local nostr-tools only
-console.log('🔒 Browser extensions disabled - using local nostr-tools only');
+        // 🔒 Using local nostr-tools for NWC encryption - no browser extensions needed
+        console.log('🔒 Using local nostr-tools for NWC encryption - no browser extensions needed');
 
 // Add error handling for missing nostr-tools
 if (typeof window.nostrTools === 'undefined') {

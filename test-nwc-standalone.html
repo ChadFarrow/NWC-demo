@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NWC Standalone Test - No Extensions Needed</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .success {
+            background: #d4edda;
+            color: #155724;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .info {
+            background: #d1ecf1;
+            color: #0c5460;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 20px 0;
+        }
+        .form-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        .code {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            white-space: pre-wrap;
+            margin: 20px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🔑 NWC Standalone Test</h1>
+            <p><strong>No Browser Extensions Required!</strong></p>
+        </div>
+
+        <div class="success">
+            <h3>✅ NWC Strings Work Independently</h3>
+            <p>This test demonstrates that Nostr Wallet Connect (NWC) strings work completely independently of browser extensions. Your NWC string contains all the necessary information for direct wallet communication.</p>
+        </div>
+
+        <div class="info">
+            <h3>🔍 How It Works</h3>
+            <p><strong>NWC strings contain:</strong></p>
+            <ul>
+                <li><strong>Wallet Pubkey</strong> - identifies your wallet</li>
+                <li><strong>Relay URL</strong> - where to send messages</li>
+                <li><strong>Secret Key</strong> - for encrypting/decrypting messages</li>
+                <li><strong>App Pubkey</strong> - derived from your secret key</li>
+            </ul>
+        </div>
+
+        <div class="form-group">
+            <label for="nwc-input">Enter your NWC string:</label>
+            <input type="text" id="nwc-input" placeholder="nostr+walletconnect://..." style="font-family: monospace;">
+        </div>
+
+        <div class="button-group">
+            <button onclick="testNWC()">🧪 Test NWC Connection</button>
+            <button onclick="parseNWC()">🔍 Parse NWC String</button>
+            <button onclick="clearResults()">🗑️ Clear Results</button>
+        </div>
+
+        <div id="results"></div>
+
+        <div class="code">
+// This test uses ONLY local libraries - no browser extensions!
+// 1. nwcjs.js - parses NWC strings and handles wallet communication
+// 2. nostr-tools.umd.js - provides local NIP-04 encryption
+// 3. Direct WebSocket communication with Nostr relays
+
+// No Alby extension, no browser wallet extensions needed!
+        </div>
+    </div>
+
+    <!-- Load required libraries -->
+    <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
+    <script src="https://bundle.run/bech32@2.0.0"></script>
+    <script src="nwcjs.js"></script>
+    <script src="nostr-tools.umd.js"></script>
+
+    <script>
+        async function testNWC() {
+            const nwcString = document.getElementById('nwc-input').value.trim();
+            const results = document.getElementById('results');
+            
+            if (!nwcString) {
+                results.innerHTML = '<div style="color: red; padding: 10px;">Please enter an NWC string first</div>';
+                return;
+            }
+
+            try {
+                results.innerHTML = '<div style="color: blue; padding: 10px;">Testing NWC connection...</div>';
+                
+                // Parse the NWC string
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                console.log('NWC Info:', nwcInfo);
+                
+                // Test wallet capabilities
+                const walletInfo = await nwcjs.getInfo(nwcInfo);
+                console.log('Wallet Info:', walletInfo);
+                
+                const methods = walletInfo?.result?.methods || [];
+                
+                results.innerHTML = `
+                    <div style="background: #d4edda; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h3>✅ NWC Connection Successful!</h3>
+                        <p><strong>Wallet Pubkey:</strong> ${nwcInfo.wallet_pubkey.substring(0, 16)}...</p>
+                        <p><strong>Relay:</strong> ${nwcInfo.relay}</p>
+                        <p><strong>Supported Methods:</strong> ${methods.join(', ')}</p>
+                        <p><strong>Keysend Support:</strong> ${methods.includes('pay_keysend') ? '✅ YES' : '❌ NO'}</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4>Raw Response:</h4>
+                        <pre style="font-size: 12px;">${JSON.stringify(walletInfo, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                results.innerHTML = `
+                    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px;">
+                        <h3>❌ NWC Test Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Make sure your NWC string is valid and your wallet is online.</p>
+                    </div>
+                `;
+                console.error('NWC test failed:', error);
+            }
+        }
+
+        function parseNWC() {
+            const nwcString = document.getElementById('nwc-input').value.trim();
+            const results = document.getElementById('results');
+            
+            if (!nwcString) {
+                results.innerHTML = '<div style="color: red; padding: 10px;">Please enter an NWC string first</div>';
+                return;
+            }
+
+            try {
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                
+                results.innerHTML = `
+                    <div style="background: #e2e3e5; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                        <h3>🔍 NWC String Parsed Successfully</h3>
+                        <p><strong>Wallet Pubkey:</strong> ${nwcInfo.wallet_pubkey}</p>
+                        <p><strong>App Pubkey:</strong> ${nwcInfo.app_pubkey}</p>
+                        <p><strong>Relay:</strong> ${nwcInfo.relay}</p>
+                        <p><strong>Secret Key Length:</strong> ${nwcInfo.app_privkey.length} characters</p>
+                    </div>
+                    <div style="background: #f8f9fa; padding: 15px; border-radius: 8px;">
+                        <h4>Parsed NWC Info:</h4>
+                        <pre style="font-size: 12px;">${JSON.stringify(nwcInfo, null, 2)}</pre>
+                    </div>
+                `;
+                
+            } catch (error) {
+                results.innerHTML = `
+                    <div style="background: #f8d7da; color: #721c24; padding: 15px; border-radius: 8px;">
+                        <h3>❌ NWC String Parse Failed</h3>
+                        <p><strong>Error:</strong> ${error.message}</p>
+                        <p>Make sure your NWC string starts with "nostr+walletconnect://"</p>
+                    </div>
+                `;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Show that libraries are loaded
+        window.addEventListener('load', () => {
+            const results = document.getElementById('results');
+            results.innerHTML = `
+                <div style="background: #d1ecf1; color: #0c5460; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                    <h3>📚 Libraries Loaded Successfully</h3>
+                    <p><strong>nwcjs:</strong> ${typeof nwcjs !== 'undefined' ? '✅ Loaded' : '❌ Missing'}</p>
+                    <p><strong>nostr-tools:</strong> ${typeof window.nostrTools !== 'undefined' ? '✅ Loaded' : '❌ Missing'}</p>
+                    <p><strong>noble-secp256k1:</strong> ${typeof nobleSecp256k1 !== 'undefined' ? '✅ Loaded' : '❌ Missing'}</p>
+                    <p><strong>bech32:</strong> ${typeof bech32 !== 'undefined' ? '✅ Loaded' : '❌ Missing'}</p>
+                </div>
+            `;
+        });
+    </script>
+</body>
+</html>

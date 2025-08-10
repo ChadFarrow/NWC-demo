@@ -1,5 +1,11 @@
 // Load nostr-tools from CDN and expose to window
 // Try multiple CDN sources to ensure availability
+// 
+// 🔑 ARCHITECTURE: NWC strings work independently without browser extensions
+// - Uses local nostr-tools for NIP-04 encryption
+// - Direct WebSocket communication with Nostr relays
+// - No Alby or other browser extensions required
+// - Secure end-to-end communication with your Lightning wallet
 const nostrToolsSources = [
     'https://cdn.jsdelivr.net/npm/nostr-tools@2.15.0/lib/nostr.bundle.js',
     'https://unpkg.com/nostr-tools@2.15.0/lib/nostr.bundle.js',
@@ -21,8 +27,8 @@ function tryLoadNostrTools() {
     script.onload = function() {
         console.log(`nostr-tools loaded from ${nostrToolsSources[currentSourceIndex]}`);
         
-        // FORCE LOCAL NOSTR-TOOLS ONLY - Skip browser extension detection
-        console.log('🔒 FORCING LOCAL NOSTR-TOOLS ONLY - Browser extensions disabled');
+        // USE LOCAL NOSTR-TOOLS FOR NWC - No browser extensions needed
+console.log('🔒 Using local nostr-tools for NWC - No browser extensions needed');
         
         // Try to find it in the global scope (local nostr-tools)
         const globalNostr = window.nostr_tools_exports || window.nostrTools;

@@ -6,6 +6,33 @@ A tool for testing Lightning Network payments and podcast value splits with **Po
 
 This project now includes a local implementation of the `@fountain/podpay` library functionality, providing enhanced Podcasting 2.0 payment handling:
 
+## 🔑 NWC (Nostr Wallet Connect) Integration
+
+This project supports **direct wallet communication** using NWC strings without requiring browser extensions:
+
+- **No Browser Extensions**: NWC strings work independently using local encryption
+- **Direct Wallet Communication**: Communicates directly with your Lightning wallet via Nostr relays
+- **Secure**: Uses NIP-04 encryption with the secret key from your NWC string
+- **Universal**: Works with any NWC-compatible wallet (Alby, Zeus, etc.)
+
+### How NWC Works
+1. **Parse NWC String**: Extract wallet pubkey, relay URL, and secret key
+2. **Local Encryption**: Use local nostr-tools for NIP-04 encryption
+3. **Direct Communication**: Send encrypted requests directly to your wallet via Nostr relays
+4. **No Middleware**: Bypasses browser extensions entirely
+
+### Technical Implementation
+- **nwcjs.js**: Custom library for NWC string parsing and wallet communication
+- **nostr-tools**: Local encryption library for NIP-04 message encryption
+- **WebSocket**: Direct communication with Nostr relays
+- **NIP-47**: Lightning wallet protocol implementation
+
+### Why NWC Strings Are Better
+- **Privacy**: No browser extension can intercept your wallet communications
+- **Reliability**: Works even if browser extensions are disabled or blocked
+- **Portability**: NWC strings can be used across different devices and browsers
+- **Security**: Direct end-to-end encryption between your app and wallet
+
 - **Enhanced Value Block Parsing**: Better parsing of podcast value blocks using PodPay
 - **Smart Payment Splits**: Automatic calculation of payment splits based on recipient configuration
 - **metaBoost Generation**: Generate proper metaBoost metadata for V4V payments
