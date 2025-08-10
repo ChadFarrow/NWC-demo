@@ -110,7 +110,7 @@ module.exports = function handler(req, res) {
             const container = document.getElementById('boosts');
             const count = document.getElementById('count');
             
-            count.textContent = \`(\${boosts.length} boosts)\`;
+            count.textContent = `(${boosts.length} boosts)`;
             
             if (boosts.length === 0) {
                 container.innerHTML = '<div class="empty">No boosts received yet. Send a metaBoost to see it here!</div>';
@@ -179,7 +179,8 @@ module.exports = function handler(req, res) {
 </html>
     `;
     
-    res.status(200).setHeader('Content-Type', 'text/html').send(html);
+    res.setHeader('Content-Type', 'text/html');
+    res.status(200).send(html);
     return;
   }
   
