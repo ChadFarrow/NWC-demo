@@ -3,12 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <!-- AGGRESSIVE CACHE BUSTING - Force no caching at all levels -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate, max-age=0, s-maxage=0, proxy-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
+    <meta http-equiv="Surrogate-Control" content="no-store">
+    <meta http-equiv="Last-Modified" content="0">
+    <meta http-equiv="ETag" content="no-cache">
     <title>V4V Lightning Payment Tester</title>
     <link rel="stylesheet" href="style.css">
     <link rel="icon" type="image/png" href="favicon.png">
+    
+    <!-- DYNAMIC CACHE BUSTING SCRIPT - Runs before anything else -->
+    <script>
+        (function() {
+            'use strict';
+            
+            // Generate unique cache-busting parameters
+            const timestamp = Date.now();
+            const random = Math.random().toString(36).substring(2, 15);
+            const sessionId = sessionStorage.getItem('v4v_session_id') || Math.random().toString(36).substring(2, 15);
+            sessionStorage.setItem('v4v_session_id', sessionId);
+            
+            // Create aggressive cache-busting URL parameters
+            window.CACHE_BUST_PARAMS = {
+                v: '2025-01-27-ULTRA-AGGRESSIVE',
+                t: timestamp,
+                r: random,
+                s: sessionId,
+                cb: 'NO_CACHE_EVER',
+                nocache: 'true',
+                bust: 'aggressive',
+                ver: '1.0.0',
+                build: timestamp
+            };
+            
+            // Function to add cache-busting to any URL
+            window.bustCache = function(url) {
+                if (!url) return url;
+                const separator = url.includes('?') ? '&' : '?';
+                const params = Object.entries(window.CACHE_BUST_PARAMS)
+                    .map(([key, value]) => `${key}=${encodeURIComponent(value)}`)
+                    .join('&');
+                return `${url}${separator}${params}`;
+            };
+            
+            // Override fetch to add cache-busting headers
+            const originalFetch = window.fetch;
+            window.fetch = function(url, options = {}) {
+                const bustedUrl = window.bustCache(url);
+                const newOptions = {
+                    ...options,
+                    headers: {
+                        'Cache-Control': 'no-cache, no-store, must-revalidate',
+                        'Pragma': 'no-cache',
+                        'Expires': '0',
+                        ...options.headers
+                    }
+                };
+                return originalFetch(bustedUrl, newOptions);
+            };
+            
+            // Force clear all possible caches
+            if ('caches' in window) {
+                caches.keys().then(names => {
+                    names.forEach(name => caches.delete(name));
+                });
+            }
+            
+            // Clear localStorage and sessionStorage
+            localStorage.clear();
+            sessionStorage.clear();
+            
+            console.log('🚀 ULTRA-AGGRESSIVE CACHE BUSTING ACTIVATED');
+            console.log('🔧 Cache bust params:', window.CACHE_BUST_PARAMS);
+            console.log('⏰ Timestamp:', new Date(timestamp).toISOString());
+        })();
+    </script>
 </head>
 <body>
     <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
@@ -84,6 +155,9 @@
                 <button class="btn btn-danger" onclick="forceRefresh()" title="Force refresh to clear cache">
                     🔄 Force Refresh
                 </button>
+                <button class="btn btn-warning" onclick="nuclearCacheClear()" title="Nuclear option - clears ALL caches and storage">
+                    ☢️ Nuclear Clear
+                </button>
             </div>
             <div id="wallet-info"></div>
         </div>
@@ -121,17 +195,86 @@
             <span class="status-indicator"></span>
             Settings saved locally • RSS: https://raw.githubusercontent.com... • NWC: nostr+walletconnect://pa80990...
         </div>
+        
+        <!-- CACHE STATUS INDICATOR -->
+        <div class="card cache-status-card">
+            <div class="card-header">
+                <div class="card-icon">🔧</div>
+                <h2 class="card-title">Cache Status & Control</h2>
+            </div>
+            <div class="cache-controls">
+                <div class="cache-info">
+                    <span class="cache-label">Session ID:</span>
+                    <span id="session-id" class="cache-value">Loading...</span>
+                </div>
+                <div class="cache-info">
+                    <span class="cache-label">Cache Bust:</span>
+                    <span id="cache-bust-status" class="cache-value">Loading...</span>
+                </div>
+                <div class="cache-info">
+                    <span class="cache-label">Scripts Loaded:</span>
+                    <span id="scripts-status" class="cache-value">Loading...</span>
+                </div>
+            </div>
+            <div class="button-group">
+                <button class="btn btn-info" onclick="checkCacheStatus()" title="Check current cache status">
+                    🔍 Check Status
+                </button>
+                <button class="btn btn-secondary" onclick="testCacheBusting()" title="Test cache busting functionality">
+                    🧪 Test Cache Bust
+                </button>
+            </div>
+        </div>
     </div>
     <!-- Noble secp256k1 for crypto operations -->
     <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
     <!-- Bech32 for address encoding -->
     <script src="https://bundle.run/bech32@2.0.0"></script>
-    <!-- NWC JS library for proper NWC implementation -->
-    <script src="nwcjs.js?v=20250810-final&t=1754838300&cb=fix_now&nocache=true"></script>
+    <!-- DYNAMIC SCRIPT LOADING WITH ULTRA-AGGRESSIVE CACHE BUSTING -->
+    <script>
+        (function() {
+            'use strict';
+            
+            // Wait for cache busting to be ready
+            if (window.CACHE_BUST_PARAMS) {
+                loadScriptsWithCacheBusting();
+            } else {
+                // Fallback if cache busting isn't ready
+                setTimeout(loadScriptsWithCacheBusting, 100);
+            }
+            
+            function loadScriptsWithCacheBusting() {
+                console.log('🔄 Loading scripts with ULTRA-AGGRESSIVE cache busting...');
+                
+                // Load nwcjs.js with cache busting
+                const nwcjsScript = document.createElement('script');
+                nwcjsScript.src = window.bustCache('nwcjs.js');
+                nwcjsScript.onload = () => {
+                    console.log('✅ nwcjs.js loaded with cache busting');
+                    
+                    // Load script-v2.js with cache busting
+                    const scriptV2 = document.createElement('script');
+                    scriptV2.src = window.bustCache('script-v2.js');
+                    scriptV2.onload = () => {
+                        console.log('✅ script-v2.js loaded with cache busting');
+                        console.log('🚀 ALL SCRIPTS LOADED WITH ULTRA-AGGRESSIVE CACHE BUSTING!');
+                    };
+                    scriptV2.onerror = (e) => {
+                        console.error('❌ Failed to load script-v2.js:', e);
+                    };
+                    document.head.appendChild(scriptV2);
+                };
+                nwcjsScript.onerror = (e) => {
+                    console.error('❌ Failed to load nwcjs.js:', e);
+                };
+                document.head.appendChild(nwcjsScript);
+            }
+        })();
+    </script>
+    
     <!-- Keep nostr-tools for backwards compatibility -->
     <script src="nostr-tools.umd.js"></script>
     <script type="module" src="/src/main.js"></script>
-    <script src="script-v2.js?v=20250810-final&t=1754838300&cb=fix_now&nocache=true"></script>
     
     <!-- IMMEDIATE KEYSEND FIX - Override sendKeysendWithNWC to use multi_pay_keysend -->
     <script>
@@ -288,19 +431,114 @@
              }
          }, 1000);
          
-         // Force refresh function to clear cache
+         // ULTRA-AGGRESSIVE FORCE REFRESH FUNCTION
          window.forceRefresh = function() {
-             console.log('🔄 Force refreshing to clear cache...');
-             // Clear any stored data
-             if (typeof localStorage !== 'undefined') {
-                 localStorage.clear();
+             console.log('🔄 ULTRA-AGGRESSIVE FORCE REFRESH ACTIVATED...');
+             
+             // Clear all possible storage
+             if (typeof localStorage !== 'undefined') { 
+                 localStorage.clear(); 
+                 console.log('✅ localStorage cleared');
              }
-             if (typeof sessionStorage !== 'undefined') {
-                 sessionStorage.clear();
+             if (typeof sessionStorage !== 'undefined') { 
+                 sessionStorage.clear(); 
+                 console.log('✅ sessionStorage cleared');
              }
-             // Force reload with cache-busting
+             
+             // Clear caches
+             if ('caches' in window) {
+                 caches.keys().then(names => {
+                     names.forEach(name => {
+                         caches.delete(name);
+                         console.log(`✅ Cache cleared: ${name}`);
+                     });
+                 });
+             }
+             
+             // Force reload with cache busting
+             const timestamp = Date.now();
+             const random = Math.random().toString(36).substring(2, 15);
+             const bustedUrl = `${window.location.pathname}?t=${timestamp}&r=${random}&bust=force&nocache=true&cb=ULTRA_AGGRESSIVE`;
+             
+             console.log('🚀 Reloading with busted URL:', bustedUrl);
+             window.location.href = bustedUrl;
+         };
+         
+         // Nuclear option for extreme cache clearing
+         window.nuclearCacheClear = function() {
+             console.log('☢️ NUCLEAR CACHE CLEAR ACTIVATED...');
+             
+             // Clear everything
+             localStorage.clear();
+             sessionStorage.clear();
+             
+             // Clear caches
+             if ('caches' in window) {
+                 caches.keys().then(names => {
+                     names.forEach(name => caches.delete(name));
+                 });
+             }
+             
+             // Clear indexedDB
+             if ('indexedDB' in window) {
+                 indexedDB.databases().then(dbs => {
+                     dbs.forEach(db => {
+                         indexedDB.deleteDatabase(db.name);
+                     });
+                 });
+             }
+             
+             // Force hard reload
              window.location.reload(true);
          };
+         
+         // Cache status checking functions
+         window.checkCacheStatus = function() {
+             console.log('🔍 Checking cache status...');
+             
+             const sessionId = sessionStorage.getItem('v4v_session_id') || 'Not set';
+             const cacheBustStatus = window.CACHE_BUST_PARAMS ? 'Active' : 'Inactive';
+             const scriptsStatus = typeof nwcjs !== 'undefined' && typeof window.sendKeysendWithNWC === 'function' ? 'Loaded' : 'Not Loaded';
+             
+             // Update UI
+             document.getElementById('session-id').textContent = sessionId;
+             document.getElementById('cache-bust-status').textContent = cacheBustStatus;
+             document.getElementById('scripts-status').textContent = scriptsStatus;
+             
+             console.log('📊 Cache Status:', {
+                 sessionId,
+                 cacheBustStatus,
+                 scriptsStatus,
+                 cacheBustParams: window.CACHE_BUST_PARAMS
+             });
+             
+             return { sessionId, cacheBustStatus, scriptsStatus };
+         };
+         
+         window.testCacheBusting = function() {
+             console.log('🧪 Testing cache busting functionality...');
+             
+             if (!window.CACHE_BUST_PARAMS) {
+                 alert('❌ Cache busting not active!');
+                 return false;
+             }
+             
+             const testUrl = 'test.js';
+             const bustedUrl = window.bustCache(testUrl);
+             
+             console.log('🧪 Test URL:', testUrl);
+             console.log('🧪 Busted URL:', bustedUrl);
+             
+             alert(`✅ Cache busting test successful!\n\nOriginal: ${testUrl}\nBusted: ${bustedUrl}`);
+             return true;
+         };
+         
+         // Auto-update cache status every 5 seconds
+         setInterval(() => {
+             if (document.getElementById('session-id')) {
+                 window.checkCacheStatus();
+             }
+         }, 5000);
          
          // Test override function
          window.testOverride = function() {
