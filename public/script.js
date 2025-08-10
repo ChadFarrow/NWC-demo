@@ -1414,6 +1414,26 @@ window.addEventListener('DOMContentLoaded', () => {
     
     // Load existing boosts from localStorage
     loadStoredBoosts();
+    
+    // Add form submit handler
+    const metaBoostForm = document.getElementById('real-payment-form');
+    if (metaBoostForm) {
+        console.log('✅ Found metaBoost form, adding event listener');
+        metaBoostForm.addEventListener('submit', function(event) {
+            console.log('🚀 Form submit event triggered!');
+            event.preventDefault();
+            sendMetaBoostMetadata(event);
+        });
+    } else {
+        console.error('❌ Could not find real-payment-form');
+    }
+    
+    // Test if function is available
+    if (typeof window.sendMetaBoostMetadata === 'function') {
+        console.log('✅ sendMetaBoostMetadata function is available');
+    } else {
+        console.error('❌ sendMetaBoostMetadata function is NOT available');
+    }
 });
 
 // Load and display stored boosts
