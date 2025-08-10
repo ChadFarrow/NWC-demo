@@ -394,7 +394,7 @@
             <div class="form-group">
                 <label class="form-label">Podcast RSS Feed URL</label>
                 <input type="url" id="rss-feed-url" placeholder="RSS Feed URL" 
-               value="metaboost-test-feed.xml">
+               value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml">
             </div>
             
             <div class="button-group">
@@ -550,11 +550,11 @@
                     
                     // Try different URL formats
                     const alternatives = [
-                        rssUrl.replace('/refs/heads/main/', '/main/'),
-                        rssUrl.replace('/main/', '/master/'),
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml',
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/master/public/lnurl_test_feed.xml',
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl_test_feed.xml',
                         'metaboost-test-feed.xml',
-                        'https://feeds.transistor.fm/lightning-junkies',
-                        'https://feeds.buzzsprout.com/1234567.rss'
+                        'https://feeds.transistor.fm/lightning-junkies'
                     ];
                     
                     for (const altUrl of alternatives) {
