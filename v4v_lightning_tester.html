@@ -284,10 +284,18 @@
         
         .value-blocks-section {
             margin-top: 2rem;
-            padding: 1rem;
+            padding: 1.5rem;
             background: #f8f9fa;
             border-radius: 8px;
-            border: 1px solid #e9ecef;
+            border: 2px solid #0066cc;
+            box-shadow: 0 2px 8px rgba(0, 102, 204, 0.1);
+        }
+        
+        .value-blocks-section h3 {
+            color: #0066cc;
+            margin-top: 0;
+            margin-bottom: 1rem;
+            font-size: 1.2em;
         }
         
         .value-blocks-list {
@@ -651,6 +659,12 @@
                 
                 window.parsedValueBlocks = valueBlocks;
                 console.log('✅ Parsed value blocks:', valueBlocks);
+                console.log('🔍 Value block details:', valueBlocks.map(block => ({
+                    title: block.title,
+                    value: block.value,
+                    type: block.type,
+                    guid: block.guid
+                })));
                 
                 // Update UI
                 updateValueBlockDisplay(valueBlocks);
@@ -724,20 +738,23 @@
         }
 
         function updateValueBlockDisplay(valueBlocks) {
+            console.log('🎨 Updating value block display with:', valueBlocks);
             let container = document.getElementById('value-blocks-container');
             if (!container) {
                 console.log('⚠️ Value blocks container not found, creating one...');
                 // Create container if it doesn't exist
                 const form = document.querySelector('form') || document.querySelector('.form-container') || document.body;
+                console.log('🔍 Found form element:', form);
                 const newContainer = document.createElement('div');
                 newContainer.id = 'value-blocks-container';
                 newContainer.className = 'value-blocks-section';
                 newContainer.innerHTML = '<h3>📡 Parsed Value Blocks</h3>';
                 form.appendChild(newContainer);
                 container = newContainer;
+                console.log('✅ Created new container:', container);
             }
             
-            container.innerHTML = `
+            const html = `
                 <h3>📡 Parsed Value Blocks (${valueBlocks.length})</h3>
                 <div class="value-blocks-list">
                     ${valueBlocks.map((block, index) => `
@@ -747,7 +764,7 @@
                                        data-title="${block.title}" data-guid="${block.guid}" checked>
                                 <span class="checkbox-text">
                                     <strong>${block.title}</strong>
-                                    <br><small>${block.value.substring(0, 20)}...</small>
+                                    <br><small>${block.value.substring(0, 50)}...</small>
                                 </span>
                             </label>
                         </div>
@@ -755,6 +772,10 @@
                 </div>
                 <p class="help-text">✅ Check the recipients you want to send payments to</p>
             `;
+            
+            console.log('🎨 Setting container HTML:', html.substring(0, 100) + '...');
+            container.innerHTML = html;
+            console.log('✅ Value block display updated successfully');
         }
 
         function clearSettings() {
