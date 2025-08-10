@@ -8,6 +8,10 @@
     {
       "src": "api/**/*",
       "use": "@vercel/node"
+    },
+    {
+      "src": "public/*.html",
+      "use": "@vercel/static"
     }
   ],
   "rewrites": [
@@ -20,6 +24,18 @@
       "destination": "/api/metaboost-dashboard.js"
     },
     {
+      "source": "/dashboard.html",
+      "destination": "/public/dashboard.html"
+    },
+    {
+      "source": "/test.html",
+      "destination": "/public/test.html"
+    },
+    {
+      "source": "/test-metaboost-feed.html",
+      "destination": "/public/test-metaboost-feed.html"
+    },
+    {
       "source": "/",
       "destination": "/public/v4v_lightning_tester.html"
     },
@@ -28,7 +44,7 @@
       "destination": "/public/v4v_lightning_tester.html"
     },
     {
-      "source": "/(.*)",
+      "source": "/(.*\\.(css|js|png|jpg|xml))",
       "destination": "/public/$1"
     }
   ],
