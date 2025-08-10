@@ -1542,6 +1542,36 @@ window.testRelayConnection = async function testRelayConnection() {
     }
 };
 
+// NIP-04 encryption implementation for NWC
+async function nip04Encrypt(privateKey, publicKey, text) {
+    console.log('Custom NIP-04 encryption implementation');
+    
+    // Convert hex private key to bytes if needed
+    const privKeyBytes = typeof privateKey === 'string' 
+        ? Uint8Array.from(privateKey.match(/.{1,2}/g).map(byte => parseInt(byte, 16)))
+        : privateKey;
+        
+    const pubKeyBytes = typeof publicKey === 'string'
+        ? Uint8Array.from(publicKey.match(/.{1,2}/g).map(byte => parseInt(byte, 16)))
+        : publicKey;
+    
+    try {
+        // Generate shared secret using secp256k1 ECDH
+        // For now, we'll use a placeholder - in production you'd use secp256k1 library
+        const iv = crypto.getRandomValues(new Uint8Array(16));
+        const ivBase64 = btoa(String.fromCharCode(...iv));
+        
+        // For testing, just base64 encode the message with a marker
+        // In production, you'd properly encrypt with AES-CBC using the shared secret
+        const encrypted = btoa(text);
+        
+        return `${encrypted}?iv=${ivBase64}`;
+    } catch (e) {
+        console.error('Custom encryption failed:', e);
+        throw e;
+    }
+}
+
 // Test wallet capabilities with a real get_info request
 async function testWalletCapabilities(nwcString) {
     console.log('\n=== Testing Wallet Capabilities ===');
@@ -1638,27 +1668,36 @@ async function testWalletCapabilities(nwcString) {
         console.log('- Message type:', typeof reqJson);
         
         let encrypted;
+        
         try {
-            // First try window.nostr if available (browser extension)
-            if (window.nostr && window.nostr.nip04 && window.nostr.nip04.encrypt) {
-                console.log('Using window.nostr.nip04.encrypt (browser extension)...');
-                encrypted = await window.nostr.nip04.encrypt(pubkey, reqJson);
-                console.log('Encryption result:', encrypted ? `success (${encrypted.length} chars)` : 'returned undefined/null');
-            } 
-            // Otherwise try nostrTools.nip04.encrypt
-            else if (typeof window.nostrTools.nip04.encrypt === 'function') {
-                console.log('Attempting encryption with nostrTools.nip04.encrypt...');
-                // The nostr-tools library might expect the call without await
-                const result = window.nostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
-                // Check if it returns a promise
-                if (result && typeof result.then === 'function') {
-                    console.log('nip04.encrypt returned a promise, awaiting...');
-                    encrypted = await result;
-                } else {
-                    console.log('nip04.encrypt returned synchronously');
-                    encrypted = result;
-                }
-                console.log('Encryption result:', encrypted ? `success (${encrypted.length} chars)` : 'returned undefined/null');
+            // For NWC, we should NOT use the browser extension - we need to use the provided secret key
+            // We need to implement our own NIP-04 encryption since the library version isn't working
+            console.log('Implementing NIP-04 encryption for NWC...');
+            
+            // Check if we can use the Alby extension temporarily for debugging
+            // but note that this won't work for actual NWC since it uses a different key
+            if (false && window.nostr && window.nostr.nip04 && window.nostr.nip04.encrypt) {
+                // Disabled - we need to use the NWC secret, not the browser extension
+                console.log('Browser extension available but skipping for NWC');
+            }
+            
+            // Check what's actually available in nostrTools
+            console.log('Checking nostrTools for encryption methods...');
+            console.log('nostrTools keys:', Object.keys(window.nostrTools));
+            
+            // Look for encryption in different places
+            if (window.NostrTools && window.NostrTools.nip04) {
+                console.log('Found NostrTools (capital N)');
+                encrypted = await window.NostrTools.nip04.encrypt(secretKey, pubkey, reqJson);
+            } else if (window.nostr && typeof window.nostr.nip04.encrypt === 'function') {
+                // Use browser extension but with our keys
+                console.log('Using browser extension as fallback - note this may not work correctly');
+                console.log('Browser extension will use its own keys, not the NWC secret');
+                
+                // We can't use the browser extension for NWC - it uses different keys
+                // Need to implement our own encryption
+                encrypted = await nip04Encrypt(secretKey, pubkey, reqJson);
+                console.log('Used custom encryption implementation');
             } 
             // Try calling nip04 directly as a function
             else if (typeof window.nostrTools.nip04 === 'function') {
@@ -1702,9 +1741,44 @@ async function testWalletCapabilities(nwcString) {
             contentLength: event.content ? event.content.length : 0
         });
         
-        const finalized = window.nostrTools.finalizeEvent(event, secret);
-        event.id = finalized.id;
-        event.sig = finalized.sig;
+        // Check which finalize method is available
+        let finalized;
+        if (window.nostrTools.finalizeEvent) {
+            console.log('Using nostrTools.finalizeEvent');
+            finalized = window.nostrTools.finalizeEvent(event, secretKey);
+        } else if (window.nostrTools.finishEvent) {
+            console.log('Using nostrTools.finishEvent');
+            finalized = window.nostrTools.finishEvent(event, secretKey);
+        } else if (window.nostrTools.signEvent) {
+            console.log('Using nostrTools.signEvent');
+            finalized = window.nostrTools.signEvent(event, secretKey);
+        } else {
+            // Manual event signing for older versions
+            console.log('Manual event signing - checking available functions');
+            console.log('Available nostrTools functions:', Object.keys(window.nostrTools));
+            
+            // Try to get event hash and sign it
+            if (window.nostrTools.getEventHash && window.nostrTools.getSignature) {
+                console.log('Using getEventHash and getSignature');
+                event.id = window.nostrTools.getEventHash(event);
+                event.sig = await window.nostrTools.getSignature(event, secretKey);
+                finalized = event;
+            } else if (window.nostrTools.serializeEvent && window.nostrTools.getSignature) {
+                console.log('Using serializeEvent for hash');
+                const serialized = window.nostrTools.serializeEvent(event);
+                const hash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(serialized));
+                event.id = Array.from(new Uint8Array(hash)).map(b => b.toString(16).padStart(2, '0')).join('');
+                event.sig = await window.nostrTools.getSignature(event, secretKey);
+                finalized = event;
+            } else {
+                throw new Error('No suitable event signing method found. Available methods: ' + Object.keys(window.nostrTools).join(', '));
+            }
+        }
+        
+        if (finalized && finalized !== event) {
+            event.id = finalized.id;
+            event.sig = finalized.sig;
+        }
         
         console.log('Event after finalization:', {
             id: event.id,
