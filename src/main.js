@@ -91,43 +91,4 @@ function createNostrToolsStub() {
 // Start loading nostr-tools
 tryLoadNostrTools(); 
 
-// ===== MetaBoost Form Handler =====
-console.log('🔄 [main.js] Setting up metaBoost form handler...');
-
-function setupMetaBoostFormHandler() {
-    const metaBoostForm = document.getElementById('real-payment-form');
-    if (metaBoostForm) {
-        console.log('✅ [main.js] Found metaBoost form, adding event listener');
-        
-        // Remove any existing listeners
-        metaBoostForm.onsubmit = null;
-        
-        // Add new event listener with explicit prevention
-        metaBoostForm.addEventListener('submit', function(event) {
-            console.log('🚀 [main.js] Form submit event triggered!');
-            event.preventDefault();
-            event.stopPropagation();
-            
-            // Call the function from script.js
-            if (typeof window.sendMetaBoostMetadata === 'function') {
-                console.log('📤 [main.js] Calling sendMetaBoostMetadata...');
-                window.sendMetaBoostMetadata(event);
-            } else {
-                console.error('❌ [main.js] sendMetaBoostMetadata function not found!');
-            }
-            
-            return false;
-        }, true); // Use capture phase
-        
-        console.log('✅ [main.js] Form handler setup complete');
-    } else {
-        console.log('⏳ [main.js] Form not found yet, trying again in 200ms...');
-        setTimeout(setupMetaBoostFormHandler, 200);
-    }
-}
-
-// Setup form handler after a delay to ensure all scripts are loaded
-setTimeout(() => {
-    console.log('🎯 [main.js] Starting delayed form handler setup...');
-    setupMetaBoostFormHandler();
-}, 500); 
+// MetaBoost form handling is now done via button click in script.js 
