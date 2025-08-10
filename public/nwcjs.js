@@ -562,5 +562,64 @@ var nwcjs = {
         });
         if ( bolt11 != invoice ) return "not paid yet";
         return events[ 0 ];
+    },
+    payKeysend: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
+        // Try different destination formats to work around the "invalid vertex length" issue
+        var destinationFormats = {
+            full_hex: destination, // 66 chars with 02/03 prefix
+            raw_hex: destination.length === 66 ? destination.slice(2) : destination, // 64 chars without prefix
+            pubkey: destination, // Alternative parameter name
+            node_id: destination // Another alternative
+        };
+        
+        console.log('Trying keysend with destination formats:', {
+            full_hex_length: destinationFormats.full_hex.length,
+            raw_hex_length: destinationFormats.raw_hex.length,
+            sample: destination.substring(0, 16) + '...'
+        });
+        
+        var msg = JSON.stringify({
+            method: "pay_keysend",
+            params: {
+                destination: destinationFormats.full_hex, // Start with full hex
+                pubkey: destinationFormats.full_hex, // Add as alternative parameter
+                node_id: destinationFormats.full_hex, // Add another alternative
+                amount: amount, // Amount in msat
+                message: message || "",
+                custom_records: {
+                    "34349334": nwcjs.bytesToHex(new TextEncoder().encode(message || ""))
+                }
+            }
+        });
+        var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
+        var obj = {
+            kind: 23194,
+            content: emsg,
+            tags: [ [ "p", nwc_info[ "wallet_pubkey" ] ] ],
+            created_at: Math.floor( Date.now() / 1000 ),
+            pubkey: nwc_info[ "app_pubkey" ],
+        }
+        var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
+        var id = event.id;
+        nwcjs.getResponse( nwc_info, id, "pay_keysend", seconds_of_delay_tolerable );
+        await nwcjs.waitSomeSeconds( 1 );
+        var relay = nwc_info[ "relay" ];
+        nwcjs.sendEvent( event, relay );
+        var loop = async () => {
+            await nwcjs.waitSomeSeconds( 1 );
+            if ( !nwcjs.response.length ) return await loop();
+            var one_i_want = null;
+            nwcjs.response.every( ( item, index ) => {
+                if ( item[ "result_type" ] === "pay_keysend" ) {
+                    one_i_want = item;
+                    nwcjs.response.splice( index, 1 );
+                    return;
+                }
+                return true;
+            });
+            if ( one_i_want ) return one_i_want;
+            return await loop();
+        }
+        return await loop();
     }
 }

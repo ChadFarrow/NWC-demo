@@ -2359,9 +2359,6 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 console.log('Processed new NWC connection for keysend payment');
             }
             
-            // Create the keysend payment request manually
-            console.log('Sending keysend payment request...');
-            
             // Ensure pubkey is in correct format (66 hex chars = compressed format)
             let destination = pubkey;
             if (pubkey.length === 66) {
@@ -2376,56 +2373,15 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 throw new Error(`Invalid pubkey length: ${pubkey.length}, expected 66 characters`);
             }
             
-            const msg = {
-                method: "pay_keysend",
-                params: {
-                    destination: destination,
-                    amount: amount * 1000, // Convert sats to msat
-                    message: message || ''
-                }
-            };
-            const msgJson = JSON.stringify(msg);
-            console.log('Keysend request payload:', msg);
-            const encrypted = await nwcjs.encrypt(nwcInfo.app_privkey, nwcInfo.wallet_pubkey, msgJson);
+            console.log('Using nwcjs.payKeysend method...');
+            console.log('Keysend parameters:', {
+                destination: destination.substring(0, 16) + '...',
+                amount_msat: amount * 1000,
+                message: message || ''
+            });
             
-            const event = {
-                kind: 23194,
-                content: encrypted,
-                tags: [["p", nwcInfo.wallet_pubkey]],
-                created_at: Math.floor(Date.now() / 1000),
-                pubkey: nwcInfo.app_pubkey,
-            };
-            
-            const signedEvent = await nwcjs.getSignedEvent(event, nwcInfo.app_privkey);
-            console.log('Keysend event signed, sending to relay...');
-            
-            // Set up response listener
-            nwcjs.getResponse(nwcInfo, signedEvent.id, "pay_keysend", 15); // Keysend might take longer
-            await nwcjs.waitSomeSeconds(1);
-            
-            // Send the event
-            nwcjs.sendEvent(signedEvent, nwcInfo.relay);
-            console.log('Keysend request sent, waiting for response...');
-            
-            // Wait for response
-            const waitForResponse = async () => {
-                for (let i = 0; i < 15; i++) {  // Wait up to 15 seconds for keysend
-                    await nwcjs.waitSomeSeconds(1);
-                    if (nwcjs.response.length > 0) {
-                        // Look for our response
-                        for (let j = 0; j < nwcjs.response.length; j++) {
-                            const resp = nwcjs.response[j];
-                            if (resp.result_type === 'pay_keysend') {
-                                nwcjs.response.splice(j, 1);  // Remove it from the array
-                                return resp;
-                            }
-                        }
-                    }
-                }
-                throw new Error('Keysend timeout - no response received');
-            };
-            
-            const result = await waitForResponse();
+            // Use the new payKeysend method
+            const result = await nwcjs.payKeysend(nwcInfo, destination, amount * 1000, message || '', 20);
             console.log('Keysend result from nwcjs:', result);
             
             if (result && result.result) {
