@@ -71,6 +71,18 @@ module.exports = function handler(req, res) {
     // Log for debugging
     console.log('Processed metaBoost:', processedBoost);
     
+    // Store in viewer (optional - for demo purposes)
+    try {
+      const viewerUrl = `https://${req.headers.host}/api/metaboost-viewer`;
+      fetch(viewerUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'add', boost: processedBoost })
+      }).catch(err => console.log('Could not update viewer:', err));
+    } catch (e) {
+      // Ignore viewer errors
+    }
+    
     // Return success response per spec
     res.status(200).json({ 
       status: 'ok',
