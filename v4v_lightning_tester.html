@@ -394,7 +394,7 @@
             <div class="form-group">
                 <label class="form-label">Podcast RSS Feed URL</label>
                 <input type="url" id="rss-feed-url" placeholder="RSS Feed URL" 
-               value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml">
+               value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl-test-feed.xml">
             </div>
             
             <div class="button-group">
@@ -550,9 +550,9 @@
                     
                     // Try different URL formats
                     const alternatives = [
-                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml',
-                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/master/public/lnurl_test_feed.xml',
-                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl_test_feed.xml',
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl-test-feed.xml',
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/master/public/lnurl-test-feed.xml',
+                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl-test-feed.xml',
                         'metaboost-test-feed.xml',
                         'https://feeds.transistor.fm/lightning-junkies'
                     ];
@@ -803,7 +803,7 @@
 
         function loadTestFeed() {
             const rssInput = document.querySelector('input[type="url"]');
-            rssInput.value = 'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl_test_feed.xml';
+            rssInput.value = 'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl-test-feed.xml';
             
             // Add visual feedback
             rssInput.style.borderColor = 'var(--accent-success)';
