@@ -1,9 +1,3 @@
-// Polyfill fetch for Node.js < 18
-if (typeof fetch === 'undefined') {
-  const nodeFetch = require('node-fetch');
-  global.fetch = nodeFetch;
-}
-
 module.exports = function handler(req, res) {
   // Allow CORS from anywhere (for testing)
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -15,88 +9,55 @@ module.exports = function handler(req, res) {
     return;
   }
 
-  if (req.method === 'POST') {
-    console.log('Received metaBoost:', req.body);
-    
-    // Extract fields according to metaBoost spec
-    const {
+  if (req.method !== 'POST') {
+    res.status(405).json({ error: 'Method not allowed' });
+    return;
+  }
+
+  try {
+    const { amount, paymentProof, message, podcast, episode, appName, senderName, feedUrl, episodeGuid, recipients } = req.body;
+
+    if (!amount || !paymentProof) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: ['amount', 'paymentProof']
+      });
+    }
+
+    const boost = {
+      id: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+      timestamp: new Date().toISOString(),
       amount,
       paymentProof,
-      message,
-      recipients,
-      feedUrl,
-      episodeGuid,
-      timestamp,
-      appName,
-      senderName,
-      boostId,
-      paymentInfo,
-      podcast,
-      episode,
-      action,
-      ts,
-      value_msat,
-      value_msat_total
-    } = req.body;
-    
-    // Basic validation
-    if (!amount && !value_msat && !value_msat_total) {
-      return res.status(400).json({ 
-        error: 'Missing required field: amount or value_msat',
-        required: ['amount (in sats) or value_msat or value_msat_total']
-      });
-    }
-    
-    if (!paymentProof) {
-      return res.status(400).json({ 
-        error: 'Missing required field: paymentProof',
-        required: ['paymentProof']
-      });
-    }
-    
-    // Process the metaBoost data following the spec
-    const processedBoost = {
-      id: boostId || `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      status: 'received',
-      timestamp: timestamp || ts || new Date().toISOString(),
-      amount: amount || (value_msat ? Math.floor(value_msat / 1000) : null) || (value_msat_total ? Math.floor(value_msat_total / 1000) : null),
-      value_msat: value_msat || (amount ? amount * 1000 : null),
-      value_msat_total: value_msat_total || value_msat || (amount ? amount * 1000 : null),
-      paymentProof,
       message: message || '',
-      action: action || 'boost',
-      recipients: recipients || [],
-      podcast: podcast || feedUrl || 'unknown',
-      episode: episode || episodeGuid || null,
-      appName: appName || 'unknown',
-      senderName: senderName || 'anonymous',
-      paymentInfo: paymentInfo || {},
-      processingTime: new Date().toISOString()
+      podcast: podcast || 'Unknown',
+      episode: episode || 'Unknown',
+      appName: appName || 'Unknown',
+      senderName: senderName || 'Anonymous',
+      feedUrl: feedUrl || '',
+      episodeGuid: episodeGuid || '',
+      recipients: recipients || []
     };
-    
-    // Log for debugging
-    console.log('Processed metaBoost:', processedBoost);
-    
-    // Store in viewer (optional - for demo purposes)
-    try {
-      const viewerUrl = `https://${req.headers.host}/api/metaboost-viewer`;
-      fetch(viewerUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'add', boost: processedBoost })
-      }).catch(err => console.log('Could not update viewer:', err));
-    } catch (e) {
-      // Ignore viewer errors
-    }
-    
-    // Return success response per spec
+
+    console.log('✅ MetaBoost received:', boost);
+
+    // In a real implementation, you would:
+    // 1. Validate the payment proof
+    // 2. Process the Lightning payment
+    // 3. Store the boost in a database
+    // 4. Send confirmation to the podcast app
+
     res.status(200).json({ 
-      status: 'ok',
-      message: 'metaBoost received successfully',
-      boostId: processedBoost.id,
-      processed: processedBoost
+      status: 'success',
+      message: 'MetaBoost received successfully',
+      data: boost
     });
-  } else {
-    res.status(405).json({ error: 'Method not allowed' });
+
+  } catch (error) {
+    console.error('❌ Error processing MetaBoost:', error);
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message 
+    });
   }
-} 
+}; 

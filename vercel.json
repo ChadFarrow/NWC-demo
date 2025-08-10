@@ -42,11 +42,6 @@
       "use": "@vercel/static"
     }
   ],
-  "functions": {
-    "api/*.js": {
-      "runtime": "@vercel/node@3.0.0"
-    }
-  },
   "rewrites": [
     { "source": "/", "destination": "/public/v4v_lightning_tester.html" },
     { "source": "/dashboard.html", "destination": "/public/dashboard.html" },
@@ -97,8 +92,5 @@
         }
       ]
     }
-  ],
-  "engines": {
-    "node": "18.x"
-  }
+  ]
 }

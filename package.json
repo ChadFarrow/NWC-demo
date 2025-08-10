@@ -4,7 +4,7 @@
   "description": "A simple HTML/CSS/JavaScript application for testing V4V Lightning payments with PodPay integration",
   "main": "public/v4v_lightning_tester.html",
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   },
   "scripts": {
     "build": "echo 'Static build completed'",

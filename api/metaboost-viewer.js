@@ -1,9 +1,3 @@
-// Polyfill fetch for Node.js < 18
-if (typeof fetch === 'undefined') {
-  const nodeFetch = require('node-fetch');
-  global.fetch = nodeFetch;
-}
-
 // Simple in-memory storage for demo purposes
 // In production, use a database
 let boosts = [];
