@@ -1,4 +1,4 @@
-// Enhanced MetaBoost Dashboard API
+// Enhanced MetaBoost Dashboard API - Updated 2025-08-10
 // Serves a beautiful dashboard on GET requests
 // Processes metaBoost data on POST requests
 
