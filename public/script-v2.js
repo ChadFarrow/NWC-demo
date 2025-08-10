@@ -2380,27 +2380,14 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 throw new Error(`Invalid pubkey length: ${pubkey.length}, expected 66 characters`);
             }
             
-            // First check if wallet supports keysend
-            console.log('🔍 [CRITICAL CHECK] Checking if wallet supports pay_keysend...');
+            // Check wallet capabilities (console only, no popups)
+            console.log('🔍 Checking wallet capabilities...');
             const walletInfo = await nwcjs.getInfo(nwcInfo);
             const supportedMethods = walletInfo?.result?.methods || [];
-            console.log('🔍 [CRITICAL CHECK] Wallet supported methods:', supportedMethods);
-            console.log('🔍 [CRITICAL CHECK] Full wallet info:', JSON.stringify(walletInfo, null, 2));
+            console.log('🔍 Wallet supported methods:', supportedMethods);
+            console.log('🔍 Full wallet info:', JSON.stringify(walletInfo, null, 2));
             
-            // SHOW THIS PROMINENTLY
-            alert(`🔍 WALLET METHODS DEBUG:\n\nSupported: ${supportedMethods.join(', ')}\n\nContains pay_keysend: ${supportedMethods.includes('pay_keysend')}`);
-            
-            if (!supportedMethods.includes('pay_keysend')) {
-                alert(`❌ KEYSEND NOT SUPPORTED!\n\nYour Alby wallet doesn't support pay_keysend.\nSupported methods: ${supportedMethods.join(', ')}`);
-            }
-            
-            if (!supportedMethods.includes('pay_keysend')) {
-                console.log('⚠️ Wallet does not support pay_keysend method');
-                return {
-                    success: false,
-                    error: `Wallet does not support keysend payments. Supported methods: ${supportedMethods.join(', ')}`
-                };
-            }
+            // Note: We use multi_pay_keysend regardless of pay_keysend support since pay_keysend is broken in Alby
             
             console.log('✅ Wallet supports pay_keysend, proceeding...');
             console.log('Using nwcjs.payKeysend method...');
