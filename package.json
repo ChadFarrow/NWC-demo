@@ -3,10 +3,14 @@
   "version": "1.0.0",
   "description": "A simple HTML/CSS/JavaScript application for testing V4V Lightning payments with PodPay integration",
   "main": "public/index.html",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
-    "build": "./build.sh",
+    "build": "echo 'Static build completed'",
     "start": "node proxy.js",
-    "dev": "node proxy.js"
+    "dev": "node proxy.js",
+    "vercel-build": "echo 'Vercel build completed'"
   },
   "dependencies": {
     "cors": "^2.8.5",

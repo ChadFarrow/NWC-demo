@@ -1,0 +1,36 @@
+# Development files
+node_modules/
+.env
+.env.local
+.env.production
+
+# Build artifacts
+build/
+dist/
+*.log
+
+# Docker files
+docker-compose.yml
+Dockerfile
+
+# Development scripts
+build.sh
+start-all.sh
+stop-all.sh
+proxy.js
+
+# Test files
+test-*.html
+test-*.js
+
+# Documentation
+*.md
+SNAPSHOT/
+
+# IDE files
+*.code-workspace
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db

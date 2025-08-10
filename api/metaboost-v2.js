@@ -1,3 +1,9 @@
+// Polyfill fetch for Node.js < 18
+if (typeof fetch === 'undefined') {
+  const nodeFetch = require('node-fetch');
+  global.fetch = nodeFetch;
+}
+
 // Enhanced MetaBoost API v2
 // Implements the Podcasting 2.0 metaBoost specification
 // Based on: https://github.com/Podcastindex-org/podcast-namespace/discussions/676
