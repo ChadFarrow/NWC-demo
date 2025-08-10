@@ -386,7 +386,7 @@
             <div class="form-group">
                 <label class="form-label">Podcast RSS Feed URL</label>
                 <input type="url" id="rss-feed-url" placeholder="RSS Feed URL" 
-               value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml">
+               value="metaboost-test-feed.xml">
             </div>
             
             <div class="button-group">
@@ -544,7 +544,9 @@
                     const alternatives = [
                         rssUrl.replace('/refs/heads/main/', '/main/'),
                         rssUrl.replace('/main/', '/master/'),
-                        'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl_test_feed.xml'
+                        'metaboost-test-feed.xml',
+                        'https://feeds.transistor.fm/lightning-junkies',
+                        'https://feeds.buzzsprout.com/1234567.rss'
                     ];
                     
                     for (const altUrl of alternatives) {
@@ -587,17 +589,54 @@
                     const description = item.querySelector('description')?.textContent || '';
                     const guid = item.querySelector('guid')?.textContent || `episode-${index + 1}`;
                     
-                    // Look for value block patterns
+                    // Look for metaBoost value blocks
+                    const valueElement = item.querySelector('podcast\\:value, value');
+                    if (valueElement) {
+                        const metaBoostElement = valueElement.querySelector('podcast\\:metaBoost, metaBoost');
+                        if (metaBoostElement) {
+                            // Extract the metaBoost endpoint URL
+                            const metaBoostUrl = metaBoostElement.textContent;
+                            valueBlocks.push({
+                                title,
+                                value: metaBoostUrl,
+                                description,
+                                guid,
+                                type: 'metaBoost',
+                                endpoint: metaBoostUrl
+                            });
+                        }
+                    }
+                    
+                    // Also look for traditional value patterns
                     const valueMatch = description.match(/value="([^"]+)"/);
-                    if (valueMatch) {
+                    if (valueMatch && !valueBlocks.some(block => block.guid === guid)) {
                         valueBlocks.push({
                             title,
                             value: valueMatch[1],
                             description,
-                            guid
+                            guid,
+                            type: 'traditional'
                         });
                     }
                 });
+                
+                // If no items found, check for channel-level value blocks
+                if (valueBlocks.length === 0) {
+                    const channelValue = xmlDoc.querySelector('channel podcast\\:value, channel value');
+                    if (channelValue) {
+                        const channelMetaBoost = channelValue.querySelector('podcast\\:metaBoost, metaBoost');
+                        if (channelMetaBoost) {
+                            valueBlocks.push({
+                                title: 'Channel Level',
+                                value: channelMetaBoost.textContent,
+                                description: 'Channel-level metaBoost endpoint',
+                                guid: 'channel-level',
+                                type: 'metaBoost',
+                                endpoint: channelMetaBoost.textContent
+                            });
+                        }
+                    }
+                }
                 
                 if (valueBlocks.length === 0) {
                     // If no value blocks found, create a test one
@@ -689,7 +728,7 @@
             if (!container) {
                 console.log('⚠️ Value blocks container not found, creating one...');
                 // Create container if it doesn't exist
-                const form = document.querySelector('.form-container');
+                const form = document.querySelector('form') || document.querySelector('.form-container') || document.body;
                 const newContainer = document.createElement('div');
                 newContainer.id = 'value-blocks-container';
                 newContainer.className = 'value-blocks-section';
