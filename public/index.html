@@ -135,33 +135,22 @@
     
     <!-- IMMEDIATE KEYSEND FIX - Override sendKeysendWithNWC to use multi_pay_keysend -->
     <script>
-        console.log('🚀 Loading immediate keysend fix override v3...');
+        console.log('🚀 Loading immediate keysend fix override v4 - BYPASS CONNECTIVITY...');
         console.log('🕐 Timestamp:', new Date().toISOString());
         console.log('🔧 Cache-busting version: 1754838300-fix_now-nocache');
         
                  // IMMEDIATELY override the sendKeysendWithNWC function - no waiting
          window.sendKeysendWithNWC = async function(nwcString, pubkey, amount, message) {
-                     console.log('🔧 [OVERRIDE] Using working multi_pay_keysend method');
+                     console.log('🔧 [OVERRIDE v4] Using working multi_pay_keysend method');
                      console.log(`Target: ${pubkey.substring(0, 16)}... Amount: ${amount} sats`);
                      
-                     // Pre-flight connectivity check
-                     console.log('🔍 Performing pre-flight connectivity check...');
-                     let connectivityTest;
-                     try {
-                         connectivityTest = await testNodeConnectivity(pubkey);
-                         console.log('Connectivity test result:', connectivityTest);
-                         
-                         if (!connectivityTest.reachable) {
-                             console.log(`⚠️ Node connectivity check failed: ${connectivityTest.message}`);
-                         }
-                     } catch (e) {
-                         console.log('⚠️ Connectivity test failed, continuing with payment attempt');
-                         connectivityTest = {
-                             reachable: false,
-                             source: 'test_failed',
-                             message: 'Connectivity test failed - proceeding anyway'
-                         };
-                     }
+                     // Skip connectivity check to avoid undefined errors
+                     console.log('🚀 Skipping connectivity check - proceeding directly with payment');
+                     const connectivityTest = {
+                         reachable: true,
+                         source: 'override_bypass',
+                         message: 'Connectivity check bypassed in override'
+                     };
                      
                      try {
                          if (typeof nwcjs === 'undefined') {
