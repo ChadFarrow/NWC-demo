@@ -1646,6 +1646,7 @@ async function testWalletCapabilitiesWithNWCJS(nwcString) {
         console.log('Getting wallet info...');
         const info = await nwcjs.getInfo(nwcInfo);
         console.log('Wallet info received:', info);
+        console.log('Supported methods from get_info:', info?.result?.methods || 'No methods found');
         
         // Check balance
         console.log('Getting wallet balance...');
@@ -2373,6 +2374,21 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
                 throw new Error(`Invalid pubkey length: ${pubkey.length}, expected 66 characters`);
             }
             
+            // First check if wallet supports keysend
+            console.log('Checking if wallet supports pay_keysend...');
+            const walletInfo = await nwcjs.getInfo(nwcInfo);
+            const supportedMethods = walletInfo?.result?.methods || [];
+            console.log('Wallet supported methods:', supportedMethods);
+            
+            if (!supportedMethods.includes('pay_keysend')) {
+                console.log('⚠️ Wallet does not support pay_keysend method');
+                return {
+                    success: false,
+                    error: `Wallet does not support keysend payments. Supported methods: ${supportedMethods.join(', ')}`
+                };
+            }
+            
+            console.log('✅ Wallet supports pay_keysend, proceeding...');
             console.log('Using nwcjs.payKeysend method...');
             console.log('Keysend parameters:', {
                 destination: destination.substring(0, 16) + '...',
@@ -2383,6 +2399,7 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
             // Use the new payKeysend method
             const result = await nwcjs.payKeysend(nwcInfo, destination, amount * 1000, message || '', 20);
             console.log('Keysend result from nwcjs:', result);
+            console.log('Raw keysend result structure:', JSON.stringify(result, null, 2));
             
             if (result && result.result) {
                 return {

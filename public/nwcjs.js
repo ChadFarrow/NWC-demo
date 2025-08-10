@@ -122,7 +122,9 @@ var nwcjs = {
             return;
         }
         var dmsg = await nwcjs.decrypt( nwc_info[ "app_privkey" ], events[ 0 ].pubkey, events[ 0 ].content );
-        nwcjs.response.push( JSON.parse( dmsg ) );
+        var parsed_response = JSON.parse( dmsg );
+        parsed_response.result_type = result_type; // Add result_type to the response
+        nwcjs.response.push( parsed_response );
     },
     getInfo: async ( nwc_info, seconds_of_delay_tolerable = 3 ) => {
         var msg = JSON.stringify({
@@ -617,7 +619,10 @@ var nwcjs = {
                 }
                 return true;
             });
-            if ( one_i_want ) return one_i_want;
+            if ( one_i_want ) {
+                console.log('payKeysend response found:', one_i_want);
+                return one_i_want;
+            }
             return await loop();
         }
         return await loop();
