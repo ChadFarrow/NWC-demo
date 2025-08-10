@@ -36,6 +36,14 @@
   ],
   "rewrites": [
     {
+      "source": "/api/metaboost",
+      "destination": "/api/metaboost.js"
+    },
+    {
+      "source": "/api/metaboost-viewer",
+      "destination": "/api/metaboost-viewer.js"
+    },
+    {
       "source": "/api/(.*)",
       "destination": "/api/index.js"
     },
