@@ -1,6 +1,20 @@
 // MetaBoost fix script - loaded externally to bypass caching
 console.log('🔧 Loading metaBoost fix script...');
 
+// Create global function for onclick handlers
+window.handleMetaBoostSubmit = function(event) {
+    console.log('🚀 handleMetaBoostSubmit called via global function');
+    event.preventDefault();
+    // Trigger click on the properly configured button
+    const container = document.getElementById('payment-form-container');
+    if (container) {
+        const fixedBtn = container.querySelector('.metaboost-fixed-btn');
+        if (fixedBtn) {
+            fixedBtn.click();
+        }
+    }
+};
+
 // Wait for page to load
 window.addEventListener('load', function() {
     setTimeout(function() {
@@ -13,10 +27,13 @@ window.addEventListener('load', function() {
             return;
         }
         
-        // Find or create the submit button
+        // Find the submit button by various methods
         let submitBtn = container.querySelector('button[type="submit"]') || 
-                       container.querySelector('button:contains("Send metaBoost")') ||
-                       container.querySelector('.btn-primary');
+                       container.querySelector('.btn-primary') ||
+                       Array.from(container.querySelectorAll('button')).find(btn => 
+                           btn.textContent.includes('Send metaBoost') || 
+                           btn.textContent.includes('metaBoost')
+                       );
         
         if (!submitBtn) {
             console.log('❌ Submit button not found');
@@ -28,6 +45,7 @@ window.addEventListener('load', function() {
         // Remove any existing handlers and change to button type
         submitBtn.type = 'button';
         submitBtn.onclick = null;
+        submitBtn.classList.add('metaboost-fixed-btn');
         
         // Add new click handler
         submitBtn.addEventListener('click', async function(event) {
