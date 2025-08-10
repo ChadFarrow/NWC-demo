@@ -222,7 +222,10 @@ function extractValueBlocks(xmlDoc, episodeLimit = 5) {
             }
         }
         if (metaBoostEl) {
-            metaBoost = metaBoostEl.textContent;
+            metaBoost = metaBoostEl.textContent.trim();
+            console.log('🚀 Found metaBoost endpoint:', metaBoost);
+            // Store globally for use in metaBoost submission
+            window._lastParsedMetaBoost = metaBoost;
         }
         if (lightningAddresses.length > 0 || nodePubkeys.length > 0 || metaBoost) {
             let title = 'Value Block';
@@ -3375,8 +3378,19 @@ async function sendMetaBoostMetadata(event, metaBoostData = null) {
             setButtonFeedback(submitBtn, '📤 Sending...', null, null, false);
         }
 
+        // Determine metaBoost endpoint - use from feed if available, fallback to local API
+        let metaBoostEndpoint = '/api/metaboost'; // Default fallback
+        
+        // Check if we have a metaBoost endpoint from the parsed feed
+        if (window._lastParsedMetaBoost && window._lastParsedMetaBoost.trim()) {
+            metaBoostEndpoint = window._lastParsedMetaBoost.trim();
+            console.log('🎯 Using metaBoost endpoint from feed:', metaBoostEndpoint);
+        } else {
+            console.log('🏠 Using local metaBoost endpoint:', metaBoostEndpoint);
+        }
+        
         // Send to metaBoost API
-        const response = await fetch('/api/metaboost', {
+        const response = await fetch(metaBoostEndpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
