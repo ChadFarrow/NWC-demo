@@ -625,17 +625,30 @@ var nwcjs = {
                     });
                     if ( one_i_want ) {
                         console.log(`payKeysend response found with format ${format.name}:`, one_i_want);
+                        if (one_i_want.error) {
+                            console.log(`🔍 Error details for format ${format.name}:`, {
+                                error: one_i_want.error,
+                                error_type: typeof one_i_want.error,
+                                error_keys: one_i_want.error ? Object.keys(one_i_want.error) : 'no keys'
+                            });
+                        }
                         return one_i_want;
                     }
                     return await loop();
                 }
                 
                 const result = await loop();
-                if (result && result.result) {
+                if (result && result.error) {
+                    const errorMsg = `Format ${format.name}: ${JSON.stringify(result.error)}`;
+                    console.log(`❌ ${errorMsg}`);
+                    formatErrors.push(errorMsg);
+                    // Continue to next format if this one failed
+                    continue;
+                } else if (result && result.result) {
                     console.log(`✅ Keysend successful with format: ${format.name}`);
                     return result;
-                } else if (result && result.error) {
-                    const errorMsg = `Format ${format.name}: ${result.error}`;
+                } else {
+                    const errorMsg = `Format ${format.name}: Unexpected response format - ${JSON.stringify(result)}`;
                     console.log(`❌ ${errorMsg}`);
                     formatErrors.push(errorMsg);
                     // Continue to next format if this one failed
