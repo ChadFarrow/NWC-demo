@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+<rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:podcast="https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md">
   <channel>
     <title>V4V Lightning Test Feed</title>
     <description>Test feed with Lightning addresses and node pubkeys</description>
     <link>https://example.com</link>
+    
+    <!-- Add metaBoost endpoint for the channel -->
+    <podcast:value type="lightning" method="keysend">
+      <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
+    </podcast:value>
+    
     <item>
       <title>Episode 1: Lightning Network Basics</title>
       <description>Learn about Lightning Network and how to send payments to chad@getalby.com and alice@walletofsatoshi.com</description>
@@ -14,7 +20,13 @@
           <p>Node pubkey: 02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619</p>
         ]]>
       </content:encoded>
+      
+      <!-- Add metaBoost endpoint for this episode -->
+      <podcast:value type="lightning" method="keysend">
+        <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
+      </podcast:value>
     </item>
+    
     <item>
       <title>Episode 2: Value for Value Podcasting</title>
       <description>Exploring V4V podcasting with Lightning payments to bob@coinos.io and carol@zebedee.io</description>
@@ -25,7 +37,13 @@
           <p>Node pubkeys: 03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47f24772, 02f7025d96b5c63e71869f23c96d151c3dd6d8b1c8b1c8b1c8b1c8b1c8b1c8b1c8</p>
         ]]>
       </content:encoded>
+      
+      <!-- Add metaBoost endpoint for this episode -->
+      <podcast:value type="lightning" method="keysend">
+        <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
+      </podcast:value>
     </item>
+    
     <item>
       <title>Episode 3: Bitcoin and Lightning Development</title>
       <description>Technical deep dive into Bitcoin development with payments to dev@lightning.network</description>
@@ -36,6 +54,11 @@
           <p>Node pubkey: 02a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47f24773</p>
         ]]>
       </content:encoded>
+      
+      <!-- Add metaBoost endpoint for this episode -->
+      <podcast:value type="lightning" method="keysend">
+        <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
+      </podcast:value>
     </item>
   </channel>
 </rss> 

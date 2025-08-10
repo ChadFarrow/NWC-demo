@@ -1,6 +1,24 @@
 # V4V Lightning Payment Tester
 
-A tool for testing Lightning Network payments and podcast value splits.
+A tool for testing Lightning Network payments and podcast value splits with **PodPay integration**.
+
+## 🚀 New: PodPay Integration
+
+This project now includes a local implementation of the `@fountain/podpay` library functionality, providing enhanced Podcasting 2.0 payment handling:
+
+- **Enhanced Value Block Parsing**: Better parsing of podcast value blocks using PodPay
+- **Smart Payment Splits**: Automatic calculation of payment splits based on recipient configuration
+- **metaBoost Generation**: Generate proper metaBoost metadata for V4V payments
+- **Validation Tools**: Lightning address and node pubkey validation
+- **Utility Functions**: Sats/BTC conversion and formatting helpers
+
+### PodPay Features
+
+- Parse RSS feeds with enhanced value block detection
+- Calculate payment splits automatically
+- Generate metaBoost metadata for payment tracking
+- Validate Lightning addresses and node pubkeys
+- Support for multiple recipient types and split methods
 
 ## Feed URL
 https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/feed.xml
@@ -44,11 +62,34 @@ Edit the `config` object in `customize-feed.js` to:
 
 Then run `node customize-feed.js` to regenerate the feed.
 
+## PodPay Usage
+
+### Basic Usage
+```javascript
+// Parse value blocks with PodPay
+await parseValueBlocksWithPodPay();
+
+// Calculate payment splits
+calculateSplitsWithPodPay();
+
+// Generate metaBoost metadata
+generateMetaBoostWithPodPay();
+
+// Test library functionality
+testPodPayLibrary();
+```
+
+### Advanced Features
+- **Automatic Split Calculation**: PodPay automatically calculates payment amounts based on recipient splits
+- **metaBoost Generation**: Creates proper metadata for payment tracking
+- **Validation**: Ensures Lightning addresses and node pubkeys are properly formatted
+- **Utility Functions**: Easy conversion between sats and BTC
+
 ---
 
 ## Useful Podcasting 2.0 & V4V Ecosystem Links
 
-- [@fountain/podpay (JSR)](https://jsr.io/@fountain/podpay) — JavaScript/TypeScript library for Podcasting 2.0 payments and splits
+- [@fountain/podpay (JSR)](https://jsr.io/@fountain/podpay) — JavaScript/TypeScript library for Podcasting 2.0 payments and splits *(Note: Currently implemented locally)*
 - [Podcastindex-org/podcast-namespace Discussion #676: <podcast:metaBoost> proposal](https://github.com/Podcastindex-org/podcast-namespace/discussions/676) — Proposal for a new tag and API for boost/metadata
 - [thebells1111/thesplitbox](https://github.com/thebells1111/thesplitbox) — Open-source value split and boostagram processor
 - [podtoo/boostagramLIVE](https://github.com/podtoo/boostagramLIVE) — Real-time boostagram display and integration

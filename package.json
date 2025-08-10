@@ -1,7 +1,7 @@
 {
   "name": "v4v-lightning-payment-tester",
   "version": "1.0.0",
-  "description": "A simple HTML/CSS/JavaScript application for testing V4V Lightning payments",
+  "description": "A simple HTML/CSS/JavaScript application for testing V4V Lightning payments with PodPay integration",
   "main": "public/index.html",
   "scripts": {
     "build": "./build.sh",
@@ -18,8 +18,11 @@
     "lightning",
     "bitcoin",
     "v4v",
-    "podcast"
+    "podcast",
+    "podpay",
+    "podcasting2.0"
   ],
   "author": "Chad Farrow",
-  "license": "MIT"
+  "license": "MIT",
+  "note": "PodPay functionality is implemented locally in src/podpay.js since the JSR package isn't available yet"
 }

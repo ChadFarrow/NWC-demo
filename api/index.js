@@ -1,5 +1,5 @@
 // Main API handler for all routes
-export default async function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
@@ -10,8 +10,19 @@ export default async function handler(req, res) {
     return;
   }
 
+  // Debug: log the request details
+  console.log('API Request:', {
+    method: req.method,
+    url: req.url,
+    path: req.url,
+    headers: req.headers
+  });
+
+  // Extract the path from the URL
+  const path = req.url.replace('/api', '').replace('/', '');
+  
   // Health check
-  if (req.url === '/api' || req.url === '/api/') {
+  if (path === '' || path === 'index') {
     res.status(200).json({ 
       status: 'ok', 
       message: 'V4V Lightning Payment Tester API',
@@ -19,6 +30,27 @@ export default async function handler(req, res) {
     });
     return;
   }
+  
+  // metaBoost endpoint
+  if (path === 'metaboost') {
+    if (req.method === 'POST') {
+      console.log('Received metaBoost:', req.body);
+      res.status(200).json({ 
+        status: 'ok', 
+        received: req.body,
+        message: 'metaBoost data received successfully',
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.status(405).json({ error: 'Method not allowed. Use POST for metaBoost.' });
+    }
+    return;
+  }
 
-  res.status(404).json({ error: 'Not found' });
+  res.status(404).json({ 
+    error: 'Not found', 
+    path: path,
+    url: req.url,
+    method: req.method
+  });
 }
