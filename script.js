@@ -24,52 +24,112 @@ function setButtonFeedback(btn, text, duration = 2000, resetText = null, enable 
 
 // --- Fetch and Parse RSS Feed ---
 async function fetchRssFeed(feedUrl) {
-    // Try multiple CORS proxies in order
-    const proxies = [
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`,
-        `https://corsproxy.io/?${encodeURIComponent(feedUrl)}`,
-        `https://cors-anywhere.herokuapp.com/${feedUrl}`,
-        `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(feedUrl)}`
-    ];
+    console.log('🔍 Fetching RSS feed from:', feedUrl);
     
-    for (let i = 0; i < proxies.length; i++) {
-        const proxyUrl = proxies[i];
-        console.log(`Trying proxy ${i + 1}/${proxies.length}: ${proxyUrl}`);
+    // Try direct fetch first
+    try {
+        console.log('📡 Attempting direct fetch...');
+        const response = await fetch(feedUrl);
+        console.log('📡 Direct fetch response status:', response.status);
+        console.log('📡 Direct fetch response headers:', response.headers);
         
-        try {
-            const response = await fetch(proxyUrl);
-            if (response.ok) {
-                console.log(`✅ Success with proxy ${i + 1}`);
-                return await response.text();
-            } else {
-                console.log(`❌ Proxy ${i + 1} failed with status: ${response.status}`);
-            }
-        } catch (error) {
-            console.log(`❌ Proxy ${i + 1} failed with error:`, error.message);
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
+        
+        const text = await response.text();
+        console.log('📡 Direct fetch successful, content length:', text.length);
+        console.log('📡 Content preview:', text.substring(0, 200));
+        return text;
+    } catch (error) {
+        console.log('❌ Direct fetch failed:', error.message);
     }
     
-    // If all proxies fail, try direct fetch (might work in some cases)
-    console.log('All proxies failed, trying direct fetch...');
+    // Try proxy 1
     try {
-        const response = await fetch(feedUrl);
-        if (response.ok) {
-            console.log('✅ Direct fetch succeeded');
-            return await response.text();
+        console.log('📡 Trying proxy 1: api.allorigins.win');
+        const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(feedUrl)}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 1 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 1 failed: HTTP ${response.status}`);
         }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 1, content length:', text.length);
+        console.log('📡 Content preview:', text.substring(0, 200));
+        return text;
     } catch (error) {
-        console.log('❌ Direct fetch also failed:', error.message);
+        console.log('❌ Proxy 1 failed:', error.message);
+    }
+    
+    // Try proxy 2
+    try {
+        console.log('📡 Trying proxy 2: cors-anywhere');
+        const proxyUrl = `https://cors-anywhere.herokuapp.com/${feedUrl}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 2 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 2 failed: HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 2, content length:', text.length);
+        return text;
+    } catch (error) {
+        console.log('❌ Proxy 2 failed:', error.message);
+    }
+    
+    // Try proxy 3
+    try {
+        console.log('📡 Trying proxy 3: cors.bridged');
+        const proxyUrl = `https://cors.bridged.cc/${feedUrl}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 3 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 3 failed: HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 3, content length:', text.length);
+        return text;
+    } catch (error) {
+        console.log('❌ Proxy 3 failed:', error.message);
+    }
+    
+    // Try proxy 4
+    try {
+        console.log('📡 Trying proxy 4: thingproxy');
+        const proxyUrl = `https://thingproxy.freeboard.io/fetch/${feedUrl}`;
+        const response = await fetch(proxyUrl);
+        console.log('📡 Proxy 4 response status:', response.status);
+        
+        if (!response.ok) {
+            throw new Error(`Proxy 4 failed: HTTP ${response.status}`);
+        }
+        
+        const text = await response.text();
+        console.log('✅ Success with proxy 4, content length:', text.length);
+        return text;
+    } catch (error) {
+        console.log('❌ Proxy 4 failed:', error.message);
     }
     
     throw new Error('Failed to fetch RSS feed: all proxy attempts failed');
 }
 
 function parseXml(xmlText) {
+    console.log('Parsing XML text:', xmlText.substring(0, 200) + '...');
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
     const parseError = xmlDoc.querySelector('parsererror');
     if (parseError) {
-        throw new Error('Invalid XML format in RSS feed');
+        console.error('XML Parse Error:', parseError.textContent);
+        console.error('XML Content Preview:', xmlText.substring(0, 500));
+        throw new Error('Invalid XML format in RSS feed: ' + parseError.textContent);
     }
     return xmlDoc;
 }
@@ -82,10 +142,22 @@ async function parseValueBlock() {
     try {
         const rssInput = document.querySelector('input[type="url"]');
         const feedUrl = rssInput.value;
+        console.log('🔍 Parse button clicked, feed URL:', feedUrl);
+        
         if (!feedUrl) throw new Error('Please enter a RSS feed URL');
+        
+        console.log('📡 Fetching RSS feed...');
         const xmlText = await fetchRssFeed(feedUrl);
+        console.log('📡 RSS feed fetched, length:', xmlText.length);
+        
+        console.log('🔍 Parsing XML...');
         const xmlDoc = parseXml(xmlText);
+        console.log('✅ XML parsed successfully');
+        
+        console.log('🔍 Extracting value blocks...');
         const valueBlocks = extractValueBlocks(xmlDoc);
+        console.log('🔍 Value blocks extracted:', valueBlocks.length);
+        
         if (valueBlocks.length === 0) {
             setButtonFeedback(btn, '⚠️ No value blocks found', 2000, originalText);
             return;
@@ -95,10 +167,11 @@ async function parseValueBlock() {
         window._allEpisodesLoaded = false;
         window._currentEpisodeLimit = 5; // Track how many episodes we've loaded
         
+        console.log('🔍 Displaying value blocks...');
         displayValueBlocks(valueBlocks, xmlDoc);
         setButtonFeedback(btn, '✅ Parsed Successfully', 2000, originalText);
     } catch (error) {
-        console.error('Error parsing value block:', error);
+        console.error('❌ Error parsing value block:', error);
         setButtonFeedback(btn, '❌ Error: ' + error.message, 3000, originalText);
     }
 }
@@ -772,7 +845,9 @@ function clearSettings() {
 function loadTestFeed() {
     const rssInput = document.querySelector('input[type="url"]');
     // Use relative path instead of hardcoded URL for better deployment compatibility
-    rssInput.value = window.location.origin + '/metaboost-test-feed.xml';
+    const testFeedUrl = window.location.origin + '/metaboost-test-feed.xml';
+    console.log('📂 Loading test feed from:', testFeedUrl);
+    rssInput.value = testFeedUrl;
     rssInput.style.borderColor = 'var(--accent-success)';
     setTimeout(() => { rssInput.style.borderColor = 'var(--border-color)'; }, 2000);
     setButtonFeedback(event.target, '✅ Loaded', 1500, event.target.innerHTML);
@@ -3000,9 +3075,59 @@ if (typeof window.nostrTools === 'undefined' && typeof window.nostr !== 'undefin
     window.nostrTools = window.nostr;
 }
 
+// Add error handling for missing nostr-tools
+if (typeof window.nostrTools === 'undefined') {
+    console.error('❌ nostr-tools library not loaded!');
+    console.log('💡 This will prevent NWC functionality from working.');
+    console.log('💡 Check the network tab to see if the CDN script failed to load.');
+    
+    // Create a stub to prevent errors
+    window.nostrTools = {
+        nip04: {
+            encrypt: () => Promise.reject(new Error('nostr-tools not loaded')),
+            decrypt: () => Promise.reject(new Error('nostr-tools not loaded'))
+        },
+        getPublicKey: () => Promise.reject(new Error('nostr-tools not loaded')),
+        getEventHash: () => 'stub',
+        finalizeEvent: () => ({ id: 'stub', sig: 'stub' })
+    };
+}
+
 // ===== Main Script Functions =====
 
 // ===== Script Loading Debug =====
 console.log('✅ script.js loaded successfully');
 console.log('nostr-tools available:', typeof window.nostrTools !== 'undefined');
 console.log('nostr available:', typeof window.nostr !== 'undefined');
+
+// ===== Main Script Functions =====
+
+// Test basic functionality on page load
+window.addEventListener('DOMContentLoaded', () => {
+    console.log('🚀 Page loaded, testing basic functionality...');
+    
+    // Test if nostr-tools is available
+    if (typeof window.nostrTools !== 'undefined') {
+        console.log('✅ nostr-tools loaded successfully');
+        console.log('Available methods:', Object.keys(window.nostrTools));
+    } else {
+        console.error('❌ nostr-tools not available');
+    }
+    
+    // Test if PodPay stub is working
+    if (typeof window.podpay !== 'undefined') {
+        console.log('✅ PodPay stub loaded');
+    } else {
+        console.error('❌ PodPay stub not available');
+    }
+    
+    // Test if basic DOM elements are available
+    const rssInput = document.querySelector('input[type="url"]');
+    if (rssInput) {
+        console.log('✅ RSS input found');
+    } else {
+        console.error('❌ RSS input not found');
+    }
+    
+    console.log('🎯 Basic functionality test complete');
+});

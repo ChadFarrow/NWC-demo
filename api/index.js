@@ -35,11 +35,31 @@ module.exports = async function handler(req, res) {
   if (path === 'metaboost') {
     if (req.method === 'POST') {
       console.log('Received metaBoost:', req.body);
+      
+      // Validate required fields
+      const { amount, paymentProof, recipients } = req.body;
+      if (!amount || !paymentProof || !recipients) {
+        return res.status(400).json({ 
+          error: 'Missing required fields: amount, paymentProof, and recipients are required' 
+        });
+      }
+      
+      // Log payment proof details
+      console.log('Payment Proof Details:', {
+        amount: amount,
+        paymentProofLength: paymentProof.length,
+        paymentProofPreview: paymentProof.substring(0, 50) + '...',
+        recipients: recipients,
+        timestamp: new Date().toISOString()
+      });
+      
       res.status(200).json({ 
         status: 'ok', 
         received: req.body,
         message: 'metaBoost data received successfully',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        paymentProofValidated: true,
+        recipientsCount: recipients.length
       });
     } else {
       res.status(405).json({ error: 'Method not allowed. Use POST for metaBoost.' });

@@ -6,6 +6,22 @@
       "use": "@vercel/static"
     },
     {
+      "src": "src/**/*",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.html",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.js",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "*.xml",
+      "use": "@vercel/static"
+    },
+    {
       "src": "api/index.js",
       "use": "@vercel/node"
     }
@@ -16,8 +32,56 @@
       "dest": "/api/index.js"
     },
     {
+      "src": "/src/(.*)",
+      "dest": "/src/$1",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/(.*\\.js)",
+      "dest": "/$1",
+      "headers": {
+        "Content-Type": "application/javascript"
+      }
+    },
+    {
+      "src": "/(.*\\.html)",
+      "dest": "/$1",
+      "headers": {
+        "Content-Type": "text/html"
+      }
+    },
+    {
+      "src": "/(.*\\.xml)",
+      "dest": "/$1",
+      "headers": {
+        "Content-Type": "application/xml"
+      }
+    },
+    {
       "src": "/(.*)",
       "dest": "/public/$1"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/(.*\\.js)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/javascript"
+        }
+      ]
+    },
+    {
+      "source": "/(.*\\.xml)",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/xml"
+        }
+      ]
     }
   ]
 }
