@@ -107,6 +107,10 @@ async function parseValueBlock() {
 function extractValueBlocks(xmlDoc, episodeLimit = 5) {
     const valueBlocks = [];
     
+    // Extract and store podcast title
+    const channelTitle = xmlDoc.querySelector('channel > title');
+    window._lastPodcastTitle = channelTitle ? channelTitle.textContent : 'Unknown Podcast';
+    
     // First, get all episode items and limit based on episodeLimit
     const allItems = Array.from(xmlDoc.querySelectorAll('item'));
     const itemsToProcess = episodeLimit > 0 ? allItems.slice(0, episodeLimit) : allItems;
@@ -171,6 +175,11 @@ function extractValueBlocks(xmlDoc, episodeLimit = 5) {
                 if (titleEl) {
                     title = titleEl.textContent.trim() || title;
                 }
+            }
+            
+            // Store first episode title for metaBoost
+            if (valueBlocks.length === 0 && title) {
+                window._lastEpisodeTitle = title;
             }
             
             valueBlocks.push({ title, lightningAddresses, nodePubkeys, metaBoost, index: index + 1 });
@@ -906,13 +915,30 @@ function displayWalletCapabilities(walletInfo) {
 // Add this function to send a test metaBoost
 async function sendTestMetaBoost(endpoint) {
     const payload = {
-        podcast: "Test Show",
-        episode: "LNURL Testing Episode",
-        sender: "testuser@wallet.com",
+        // Podcast/Episode info
+        podcast: window._lastPodcastTitle || "Test Show",
+        episode: window._lastEpisodeTitle || "LNURL Testing Episode",
+        
+        // Payment amounts
         amount: 1000,
+        value_msat: 1000000,
+        value_msat_total: 1000000,
+        
+        // Boost metadata
+        action: 'boost',
+        boostId: `test_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
         message: "Great episode!",
-        payment_proof: "test-proof",
-        timestamp: new Date().toISOString()
+        
+        // Sender info
+        senderName: "Test User",
+        appName: "V4V Lightning Payment Tester",
+        
+        // Payment proof (simulated)
+        paymentProof: "test_proof_" + Math.random().toString(36).substr(2),
+        
+        // Timestamps
+        timestamp: new Date().toISOString(),
+        ts: Math.floor(Date.now() / 1000)
     };
     try {
         const res = await fetch(endpoint, {
@@ -2162,392 +2188,29 @@ window.testWalletCapabilitiesStandalone = async function testWalletCapabilitiesS
     }
 };
 
-// ===== PodPay Enhanced Functionality =====
 
-/**
- * Enhanced value block parsing using PodPay library
- */
-window.parseValueBlocksWithPodPay = async function() {
-    if (!window.podpay) {
-        alert('PodPay library not loaded. Please refresh the page.');
-        return;
-    }
-    
-    try {
-        const rssInput = document.querySelector('input[type="url"]');
-        const feedUrl = rssInput.value;
-        if (!feedUrl) throw new Error('Please enter a RSS feed URL');
-        
-        const xmlText = await fetchRssFeed(feedUrl);
-        const xmlDoc = parseXml(xmlText);
-        
-        // Use PodPay to parse value blocks
-        const valueBlocks = window.podpay.parseValueBlocks(xmlDoc);
-        
-        if (valueBlocks.length === 0) {
-            alert('No value blocks found using PodPay parser');
-            return;
-        }
-        
-        console.log('PodPay parsed value blocks:', valueBlocks);
-        
-        // Display enhanced value blocks
-        displayEnhancedValueBlocks(valueBlocks);
-        
-    } catch (error) {
-        console.error('PodPay parsing error:', error);
-        alert('Error parsing with PodPay: ' + error.message);
-    }
-};
 
-/**
- * Display enhanced value blocks with PodPay data
- */
-function displayEnhancedValueBlocks(valueBlocks) {
-    const container = document.querySelector('.container');
-    
-    // Remove existing enhanced display
-    const existing = document.getElementById('podpay-enhanced-display');
-    if (existing) existing.remove();
-    
-    const displayDiv = document.createElement('div');
-    displayDiv.id = 'podpay-enhanced-display';
-    displayDiv.className = 'card';
-    displayDiv.innerHTML = `
-        <div class="card-header">
-            <div class="card-icon">🚀</div>
-            <h2 class="card-title">PodPay Enhanced Value Blocks</h2>
-        </div>
-        <div class="enhanced-content">
-            <p>Found ${valueBlocks.length} value blocks using PodPay library</p>
-            <div class="value-blocks-list"></div>
-        </div>
-    `;
-    
-    container.appendChild(displayDiv);
-    
-    const listContainer = displayDiv.querySelector('.value-blocks-list');
-    
-    valueBlocks.forEach((block, index) => {
-        const blockDiv = document.createElement('div');
-        blockDiv.className = 'enhanced-block';
-        blockDiv.innerHTML = `
-            <h3>${block.title || `Episode ${index + 1}`}</h3>
-            <p><strong>Type:</strong> ${block.type}</p>
-            <p><strong>Suggested:</strong> ${PodPayUtils.formatAmount(block.suggested)}</p>
-            <p><strong>Recipients:</strong> ${block.recipients.length}</p>
-            <div class="recipients-list">
-                ${block.recipients.map(recipient => `
-                    <div class="recipient">
-                        <span class="name">${recipient.name || 'Unknown'}</span>
-                        <span class="address">${recipient.address}</span>
-                        <span class="type">${recipient.type}</span>
-                        <span class="split">${recipient.split}%</span>
-                    </div>
-                `).join('')}
-            </div>
-        `;
-        listContainer.appendChild(blockDiv);
-    });
-};
 
-/**
- * Calculate payment splits using PodPay
- */
-window.calculateSplitsWithPodPay = function() {
-    if (!window.podpay) {
-        alert('PodPay library not loaded. Please refresh the page.');
-        return;
-    }
-    
-    const amountInput = document.getElementById('payment-amount');
-    const amount = parseInt(amountInput.value);
-    
-    if (!amount || amount <= 0) {
-        alert('Please enter a valid payment amount');
-        return;
-    }
-    
-    // Get current value blocks from the page
-    const valueBlocks = window._lastValueBlocks || [];
-    if (valueBlocks.length === 0) {
-        alert('No value blocks available. Please parse a feed first.');
-        return;
-    }
-    
-    // Use first value block for demonstration
-    const block = valueBlocks[0];
-    const recipients = [
-        ...(block.lightningAddresses || []).map(addr => ({
-            name: addr.name || 'Lightning Address',
-            address: addr.address,
-            type: 'lightning',
-            split: parseInt(addr.split) || 0
-        })),
-        ...(block.nodePubkeys || []).map(node => ({
-            name: node.name || 'Node Pubkey',
-            address: node.address,
-            type: 'node',
-            split: parseInt(node.split) || 0
-        }))
-    ];
-    
-    if (recipients.length === 0) {
-        alert('No recipients found in value blocks');
-        return;
-    }
-    
-    // Calculate splits using PodPay
-    const calculatedSplits = window.podpay.calculateSplits(amount, recipients);
-    
-    // Display calculated splits
-    displayCalculatedSplits(amount, calculatedSplits);
-};
 
-/**
- * Display calculated payment splits
- */
-function displayCalculatedSplits(totalAmount, splits) {
-    const container = document.querySelector('.container');
-    
-    // Remove existing splits display
-    const existing = document.getElementById('podpay-splits-display');
-    if (existing) existing.remove();
-    
-    const displayDiv = document.createElement('div');
-    displayDiv.id = 'podpay-splits-display';
-    displayDiv.className = 'card';
-    displayDiv.innerHTML = `
-        <div class="card-header">
-            <div class="card-icon">💰</div>
-            <h2 class="card-title">PodPay Payment Splits</h2>
-        </div>
-        <div class="splits-content">
-            <p><strong>Total Amount:</strong> ${PodPayUtils.formatAmount(totalAmount)}</p>
-            <div class="splits-list"></div>
-        </div>
-    `;
-    
-    container.appendChild(displayDiv);
-    
-    const listContainer = displayDiv.querySelector('.splits-list');
-    
-    splits.forEach((split, index) => {
-        const splitDiv = document.createElement('div');
-        splitDiv.className = 'split-item';
-        splitDiv.innerHTML = `
-            <div class="split-header">
-                <span class="name">${split.name}</span>
-                <span class="amount">${PodPayUtils.formatAmount(split.calculatedAmount)}</span>
-            </div>
-            <div class="split-details">
-                <span class="address">${split.address}</span>
-                <span class="type">${split.type}</span>
-                <span class="split-percent">${split.split}%</span>
-                ${split.remaining > 0 ? `<span class="remaining">+${split.remaining} remaining</span>` : ''}
-            </div>
-        `;
-        listContainer.appendChild(splitDiv);
-    });
-};
+
+
+
 
 /**
  * Generate metaBoost metadata using PodPay
  */
-window.generateMetaBoostWithPodPay = function() {
-    if (!window.podpay) {
-        alert('PodPay library not loaded. Please refresh the page.');
-        return;
-    }
-    
-    const amountInput = document.getElementById('payment-amount');
-    const messageInput = document.getElementById('payment-message');
-    
-    const amount = parseInt(amountInput.value);
-    const message = messageInput.value;
-    
-    if (!amount || amount <= 0) {
-        alert('Please enter a valid payment amount');
-        return;
-    }
-    
-    // Get current value blocks
-    const valueBlocks = window._lastValueBlocks || [];
-    if (valueBlocks.length === 0) {
-        alert('No value blocks available. Please parse a feed first.');
-        return;
-    }
-    
-    const block = valueBlocks[0];
-    const recipients = [
-        ...(block.lightningAddresses || []).map(addr => ({
-            name: addr.name || 'Lightning Address',
-            address: addr.address,
-            type: 'lightning',
-            split: parseInt(addr.split) || 0
-        })),
-        ...(block.nodePubkeys || []).map(node => ({
-            name: node.name || 'Node Pubkey',
-            address: node.address,
-            type: 'node',
-            split: parseInt(node.split) || 0
-        }))
-    ];
-    
-    if (recipients.length === 0) {
-        alert('No recipients found in value blocks');
-        return;
-    }
-    
-    // Calculate splits first
-    const calculatedSplits = window.podpay.calculateSplits(amount, recipients);
-    
-    // Generate metaBoost metadata
-    const payment = {
-        amount,
-        message,
-        podcast: 'Test Podcast',
-        episode: block.title || 'Test Episode'
-    };
-    
-    const metaBoost = window.podpay.generateMetaBoost(payment, calculatedSplits);
-    
-    // Display metaBoost metadata
-    displayMetaBoostMetadata(metaBoost);
-};
 
-/**
- * Display metaBoost metadata
- */
-function displayMetaBoostMetadata(metaBoost) {
-    const container = document.querySelector('.container');
-    
-    // Remove existing metaBoost display
-    const existing = document.getElementById('podpay-metaboost-display');
-    if (existing) existing.remove();
-    
-    const displayDiv = document.createElement('div');
-    displayDiv.id = 'podpay-metaboost-display';
-    displayDiv.className = 'card';
-    displayDiv.innerHTML = `
-        <div class="card-header">
-            <div class="card-icon">📡</div>
-            <h2 class="card-title">PodPay metaBoost Metadata</h2>
-        </div>
-        <div class="metaboost-content">
-            <pre class="metaboost-json">${JSON.stringify(metaBoost, null, 2)}</pre>
-            <button class="btn btn-primary" onclick="copyMetaBoostToClipboard()">📋 Copy to Clipboard</button>
-        </div>
-    `;
-    
-    container.appendChild(displayDiv);
-};
 
-/**
- * Copy metaBoost metadata to clipboard
- */
-window.copyMetaBoostToClipboard = function() {
-    const jsonElement = document.querySelector('.metaboost-json');
-    if (jsonElement) {
-        navigator.clipboard.writeText(jsonElement.textContent).then(() => {
-            alert('metaBoost metadata copied to clipboard!');
-        }).catch(err => {
-            console.error('Failed to copy:', err);
-            alert('Failed to copy to clipboard');
-        });
-    }
-};
+
+
+
 
 /**
  * Test PodPay library functionality
  */
-window.testPodPayLibrary = function() {
-    if (!window.podpay) {
-        alert('PodPay library not loaded. Please refresh the page.');
-        return;
-    }
-    
-    try {
-        // Test validation functions
-        const testAddress = 'chadf@getalby.com';
-        const testPubkey = '032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51';
-        
-        const addressValid = window.podpay.validateLightningAddress(testAddress);
-        const pubkeyValid = window.podpay.validateNodePubkey(testPubkey);
-        
-        // Test utility functions
-        const sats = 1000;
-        const btc = PodPayUtils.satsToBTC(sats);
-        const backToSats = PodPayUtils.btcToSats(btc);
-        
-        let message = '✅ PodPay Library Test Results:\n\n';
-        message += `Lightning Address Validation: ${addressValid ? '✅' : '❌'}\n`;
-        message += `Node Pubkey Validation: ${pubkeyValid ? '✅' : '❌'}\n`;
-        message += `Sats to BTC Conversion: ${sats} sats = ${btc} BTC\n`;
-        message += `BTC to Sats Conversion: ${btc} BTC = ${backToSats} sats\n`;
-        message += `Amount Formatting: ${PodPayUtils.formatAmount(sats)}\n`;
-        
-        alert(message);
-        
-    } catch (error) {
-        console.error('PodPay library test failed:', error);
-        alert('PodPay library test failed: ' + error.message);
-    }
-};
 
-/**
- * Test TLV record generation and LNURL functionality
- */
-window.testTLVAndLNURL = function() {
-    if (!window.podpay) {
-        alert('PodPay library not loaded. Please refresh the page.');
-        return;
-    }
-    
-    try {
-        // Test metadata
-        const metadata = {
-            podcast: 'V4V Lightning Tester',
-            episode: 'Test Episode with TLV Records',
-            message: 'This is a test boost with TLV metadata!',
-            action: 'boost',
-            app: 'v4v-lightning-tester',
-            ts: Math.floor(Date.now() / 1000),
-            feedUrl: 'https://example.com/feed.xml',
-            episodeGuid: 'test-episode-123'
-        };
-        
-        // Generate TLV records
-        const tlvRecords = window.podpay.generateTLVRecords(metadata);
-        
-        // Test LNURL generation
-        const lightningAddress = 'chadf@getalby.com';
-        const lnurl = window.podpay.generateLNURL(lightningAddress);
-        
-        // Test TLV parsing
-        const parsedMetadata = window.podpay.parseTLVRecords(tlvRecords);
-        
-        let message = '🚀 TLV & LNURL Test Results:\n\n';
-        message += `Lightning Address: ${lightningAddress}\n`;
-        message += `Generated LNURL: ${lnurl}\n\n`;
-        message += `Generated ${tlvRecords.length} TLV Records:\n`;
-        
-        tlvRecords.forEach((record, index) => {
-            message += `${index + 1}. Type: ${record.type}, Value: ${record.value.length} bytes\n`;
-        });
-        
-        message += `\nParsed Metadata:\n`;
-        Object.entries(parsedMetadata).forEach(([key, value]) => {
-            message += `• ${key}: ${value}\n`;
-        });
-        
-        alert(message);
-        
-    } catch (error) {
-        console.error('TLV & LNURL test failed:', error);
-        alert('TLV & LNURL test failed: ' + error.message);
-    }
-};
+
+
 
 /**
  * Generate LNURL-pay invoice with TLV records
@@ -2895,15 +2558,50 @@ async function sendMetaBoostMetadata(event) {
             throw new Error('Please select at least one recipient');
         }
         
-        // Prepare metaBoost data
+        // Get podcast and episode info from parsed feed
+        const valueBlocks = window._lastValueBlocks || [];
+        const feedUrl = document.querySelector('input[type="url"]').value;
+        const podcastTitle = window._lastPodcastTitle || 'Unknown Podcast';
+        const episodeTitle = window._lastEpisodeTitle || valueBlocks[0]?.title || 'Unknown Episode';
+        
+        // Prepare metaBoost data following the spec
         const metaBoostData = {
+            // Required fields
             amount: parseInt(amount),
-            message: message || '',
             paymentProof: paymentProof,
+            
+            // Boost metadata
+            message: message || '',
+            action: 'boost',
+            boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            
+            // Value amounts (in millisats for compatibility)
+            value_msat: parseInt(amount) * 1000,
+            value_msat_total: parseInt(amount) * 1000,
+            
+            // Recipients and splits
             recipients: recipients,
+            
+            // Podcast/Episode info
+            podcast: podcastTitle,
+            episode: episodeTitle,
+            feedUrl: feedUrl,
+            episodeGuid: window._currentEpisodeGuid || null,
+            
+            // App and sender info
+            appName: 'V4V Lightning Payment Tester',
+            senderName: 'Anonymous Tester',
+            
+            // Timestamps
             timestamp: new Date().toISOString(),
-            feedUrl: document.querySelector('input[type="url"]').value,
-            episodeGuid: window._currentEpisodeGuid || null
+            ts: Math.floor(Date.now() / 1000),
+            
+            // Additional payment info
+            paymentInfo: {
+                type: 'lightning',
+                network: 'mainnet',
+                method: paymentProof.startsWith('lnbc') ? 'invoice' : 'keysend'
+            }
         };
         
         // Show sending state
@@ -2957,10 +2655,14 @@ function displayMetaBoostResult(result, sentData) {
     
     resultDiv.innerHTML = `
         <h4>✅ metaBoost Sent Successfully</h4>
-        <p><strong>Amount:</strong> ${sentData.amount} sats</p>
+        <p><strong>Podcast:</strong> ${sentData.podcast}</p>
+        <p><strong>Episode:</strong> ${sentData.episode}</p>
+        <p><strong>Amount:</strong> ${sentData.amount} sats (${sentData.value_msat} msat)</p>
         <p><strong>Message:</strong> ${sentData.message || 'None'}</p>
+        <p><strong>Boost ID:</strong> ${sentData.boostId}</p>
         <p><strong>Payment Proof:</strong> ${sentData.paymentProof.substring(0, 20)}...</p>
         <p><strong>Recipients:</strong> ${sentData.recipients.join(', ')}</p>
+        <p><strong>App:</strong> ${sentData.appName}</p>
         <p><strong>Timestamp:</strong> ${new Date(sentData.timestamp).toLocaleString()}</p>
         <p><strong>API Response:</strong> ${result.message}</p>
     `;
