@@ -82,13 +82,20 @@
     
     <div class="form-group">
         <label>Recipients</label>
-        <select id="recipients" multiple size="4">
-            <option value="chadf@getalby.com">chadf@getalby.com</option>
-            <option value="chadf@btcpay.podtards.com">chadf@btcpay.podtards.com</option>
-            <option value="eagerheron90@zeusnuts.com">eagerheron90@zeusnuts.com</option>
-            <option value="test@example.com">test@example.com</option>
-        </select>
-        <small style="color: #999;">Hold Ctrl/Cmd to select multiple</small>
+        <div id="recipients" style="border: 1px solid #444; padding: 0.75rem; background: #2a2a2a; border-radius: 4px;">
+            <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+                <input type="checkbox" value="chadf@getalby.com" checked> chadf@getalby.com
+            </label>
+            <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+                <input type="checkbox" value="chadf@btcpay.podtards.com"> chadf@btcpay.podtards.com
+            </label>
+            <label style="display: block; margin-bottom: 0.5rem; cursor: pointer;">
+                <input type="checkbox" value="eagerheron90@zeusnuts.com"> eagerheron90@zeusnuts.com
+            </label>
+            <label style="display: block; margin: 0; cursor: pointer;">
+                <input type="checkbox" value="test@example.com"> test@example.com
+            </label>
+        </div>
     </div>
     
     <button id="submitBtn" onclick="sendMetaBoost()">Send MetaBoost</button>
@@ -109,8 +116,8 @@
                 const amount = parseInt(document.getElementById('amount').value);
                 const message = document.getElementById('message').value;
                 const paymentProof = document.getElementById('paymentProof').value;
-                const recipientSelect = document.getElementById('recipients');
-                const recipients = Array.from(recipientSelect.selectedOptions).map(opt => opt.value);
+                const recipientCheckboxes = document.querySelectorAll('#recipients input[type="checkbox"]:checked');
+                const recipients = Array.from(recipientCheckboxes).map(cb => cb.value);
                 
                 if (!amount || !paymentProof) {
                     throw new Error('Please enter amount and payment proof');
