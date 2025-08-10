@@ -260,6 +260,13 @@
                 nostrToolsScript.onload = () => {
                     console.log('✅ nostr-tools.umd.js loaded with cache busting');
                     
+                    // Create aliases for NostrTools
+                    if (typeof window.NostrTools !== 'undefined') {
+                        window.nostrTools = window.NostrTools;
+                        window.nostr = window.NostrTools;
+                        console.log('✅ NostrTools aliases created (nostrTools, nostr)');
+                    }
+                    
                     // Load nwcjs.js with cache busting
                     const nwcjsScript = document.createElement('script');
                     nwcjsScript.src = window.bustCache('nwcjs.js');

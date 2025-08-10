@@ -3472,11 +3472,16 @@ window.podpay = {
 // 🔒 BROWSER EXTENSIONS DISABLED - Using local nostr-tools only
 console.log('🔒 Browser extensions disabled - using local nostr-tools only');
 
-// Add error handling for missing nostr-tools
-if (typeof window.nostrTools === 'undefined') {
+// Check for NostrTools (capital N) from the UMD bundle
+if (typeof window.NostrTools !== 'undefined') {
+    console.log('✅ NostrTools (UMD) loaded successfully');
+    // Create alias for compatibility
+    window.nostrTools = window.NostrTools;
+    window.nostr = window.NostrTools; // Some code might expect this
+} else if (typeof window.nostrTools === 'undefined') {
     console.error('❌ nostr-tools library not loaded!');
     console.log('💡 This will prevent NWC functionality from working.');
-    console.log('💡 Check the network tab to see if the CDN script failed to load.');
+    console.log('💡 Check the network tab to see if the nostr-tools.umd.js script failed to load.');
     
     // Create a stub to prevent errors
     window.nostrTools = {
