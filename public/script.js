@@ -2376,11 +2376,18 @@ async function sendKeysendWithNWC(nwcString, pubkey, amount, message) {
             }
             
             // First check if wallet supports keysend
-            console.log('🔍 [DEBUG v1.1] Checking if wallet supports pay_keysend...');
+            console.log('🔍 [CRITICAL CHECK] Checking if wallet supports pay_keysend...');
             const walletInfo = await nwcjs.getInfo(nwcInfo);
             const supportedMethods = walletInfo?.result?.methods || [];
-            console.log('🔍 [DEBUG v1.1] Wallet supported methods:', supportedMethods);
-            console.log('🔍 [DEBUG v1.1] Full wallet info:', JSON.stringify(walletInfo, null, 2));
+            console.log('🔍 [CRITICAL CHECK] Wallet supported methods:', supportedMethods);
+            console.log('🔍 [CRITICAL CHECK] Full wallet info:', JSON.stringify(walletInfo, null, 2));
+            
+            // SHOW THIS PROMINENTLY
+            alert(`🔍 WALLET METHODS DEBUG:\n\nSupported: ${supportedMethods.join(', ')}\n\nContains pay_keysend: ${supportedMethods.includes('pay_keysend')}`);
+            
+            if (!supportedMethods.includes('pay_keysend')) {
+                alert(`❌ KEYSEND NOT SUPPORTED!\n\nYour Alby wallet doesn't support pay_keysend.\nSupported methods: ${supportedMethods.join(', ')}`);
+            }
             
             if (!supportedMethods.includes('pay_keysend')) {
                 console.log('⚠️ Wallet does not support pay_keysend method');

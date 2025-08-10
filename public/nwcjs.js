@@ -580,10 +580,20 @@ var nwcjs = {
             sample: destination.substring(0, 16) + '...'
         });
         
+        // Try removing the 02/03 prefix - some implementations expect raw 32-byte pubkey
+        var rawPubkey = destination.length === 66 ? destination.slice(2) : destination;
+        
+        console.log('Trying keysend with formats:', {
+            full_hex: destination,
+            raw_hex: rawPubkey,
+            destination_length: destination.length,
+            raw_length: rawPubkey.length
+        });
+        
         var msg = JSON.stringify({
             method: "pay_keysend",
             params: {
-                pubkey: destinationFormats.full_hex, // NIP-47 standard parameter name
+                pubkey: rawPubkey, // Try 64-char format without 02/03 prefix
                 amount: amount, // Amount in msat
                 tlv_records: [
                     {
