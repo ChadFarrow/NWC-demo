@@ -522,7 +522,6 @@
                     type="text" 
                     class="form-input" 
                     placeholder="nostr+walletconnect://pa80990666ef0b64ba5059347beb13242921e54669e680064ca755256a1e3a67..."
-                    value="nostr+walletconnect://pa80990666ef0b64ba5059347beb13242921e54669e680064ca755256a1e3a67relay=wss%3A%2F%2Frelay.coinos.io&secret=..."
                 >
             </div>
             
@@ -823,6 +822,16 @@
             }
         }
         
+        function toggleGroupSelection(groupKey) {
+            const groupCheckbox = document.getElementById(`group-checkbox-${groupKey}`);
+            const recipientCheckboxes = document.querySelectorAll(`input[data-group="${groupKey}"][name="recipients"]`);
+            
+            // Set all recipient checkboxes to match the group checkbox state
+            recipientCheckboxes.forEach(checkbox => {
+                checkbox.checked = groupCheckbox.checked;
+            });
+        }
+        
         function updateRecipientCheckboxes(valueBlocks) {
             const container = document.getElementById('recipient-checkboxes');
             
@@ -888,81 +897,71 @@
                 console.log('✅ Created new container after RSS card:', container);
             }
             
-                            // Group value blocks by channel and episode
-                const groupedBlocks = {};
-                valueBlocks.forEach(block => {
-                    const groupKey = block.group === 'channel' ? 'channel' : `episode-${block.episodeNumber}`;
-                    if (!groupedBlocks[groupKey]) {
-                        groupedBlocks[groupKey] = {
-                            title: block.groupTitle,
-                            blocks: []
-                        };
-                    }
-                    groupedBlocks[groupKey].blocks.push(block);
-                });
+            // Group value blocks by their source (channel vs episode)
+            const groupedBlocks = {};
+            valueBlocks.forEach(block => {
+                const groupKey = block.group === 'channel' ? 'channel' : `episode-${block.episodeNumber}`;
+                if (!groupedBlocks[groupKey]) {
+                    groupedBlocks[groupKey] = {
+                        title: block.group === 'channel' ? 'Channel Default Splits' : block.groupTitle,
+                        blocks: []
+                    };
+                }
+                groupedBlocks[groupKey].blocks.push(block);
+            });
 
-                const html = `
-                <div class="card-header"><div class="card-icon">📡</div><h2 class="card-title">Parsed Value Blocks (${valueBlocks.length})</h2></div>
-                <div style="padding: 2rem;">
-                    <div class="success-message" style="background: #d4edda; color: #155724; padding: 0.75rem; border-radius: 4px; margin-bottom: 1.5rem; border: 1px solid #c3e6cb;">
-                        ✅ Successfully parsed ${valueBlocks.length} value block${valueBlocks.length !== 1 ? 's' : ''} from RSS feed!
+            const html = `
+                <div class="card-header"><div class="card-icon">📡</div><h2 class="card-title">Parsed Recipients (${valueBlocks.length})</h2></div>
+                <div style="padding: 1.5rem;">
+                    <div style="background: var(--accent-success); color: white; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; text-align: center;">
+                        ✅ Found ${valueBlocks.length} recipient${valueBlocks.length !== 1 ? 's' : ''} across ${Object.keys(groupedBlocks).length} value block${Object.keys(groupedBlocks).length !== 1 ? 's' : ''}
                     </div>
                     
                     ${Object.entries(groupedBlocks).map(([groupKey, group]) => `
-                        <div class="value-group" style="margin-bottom: 2.5rem; background: var(--bg-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
-                            <div class="group-header" style="background: var(--bg-secondary); padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
-                                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.2rem; font-weight: 600;">
-                                    ${group.title}
-                                </h3>
+                        <div class="value-group" style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden;">
+                            <div class="group-header" style="background: var(--bg-secondary); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
+                                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; flex: 1;">
+                                    <input type="checkbox" id="group-checkbox-${groupKey}" onchange="toggleGroupSelection('${groupKey}')" style="margin: 0; transform: scale(1.2);">
+                                    <h4 style="margin: 0; color: var(--text-primary); font-size: 0.9rem; font-weight: 600;">
+                                        ${group.title} <span style="color: var(--text-muted); font-weight: 400;">(${group.blocks.length} recipient${group.blocks.length !== 1 ? 's' : ''})</span>
+                                    </h4>
+                                </label>
+                                <span style="color: var(--text-muted); font-size: 1rem; transition: transform 0.2s ease; cursor: pointer; padding: 0.25rem;" id="group-toggle-${groupKey}" onclick="toggleGroupSplits('${groupKey}')">▼</span>
                             </div>
                             
-                            <div class="group-splits-dropdown" style="border-bottom: 1px solid var(--border-color); overflow: hidden;">
-                                <div class="dropdown-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--bg-secondary); cursor: pointer; border-bottom: 1px solid var(--border-color);" onclick="toggleGroupSplits('${groupKey}')">
-                                    <span style="font-weight: 600; color: var(--text-primary);">📊 Split Information</span>
-                                    <span style="color: var(--text-muted); font-size: 1.2rem; transition: transform 0.2s ease;" id="group-toggle-${groupKey}">▼</span>
-                                </div>
-                                <div class="dropdown-content" id="group-content-${groupKey}" style="display: none; padding: 1rem; background: var(--bg-primary);">
-                                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; font-size: 0.9rem; align-items: center;">
-                                        ${group.blocks.map(block => `
-                                            <div style="color: var(--text-primary); font-weight: 500;">${block.title}</div>
-                                            <div style="color: var(--text-muted);">${block.type} recipient</div>
-                                            ${block.split ? `<div style="color: var(--accent-primary); font-weight: 600; text-align: right;">${block.split}%</div>` : '<div style="color: var(--text-muted); text-align: right;">-</div>'}
-                                        `).join('')}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div class="group-content" style="padding: 1.5rem;">
-                                <div class="value-blocks-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                            <div class="group-content" id="group-content-${groupKey}" style="padding: 1rem; display: none;">
+                                <div class="recipients-grid" style="display: grid; gap: 0.5rem;">
                                     ${group.blocks.map((block, index) => `
-                                        <div class="value-block-item" style="display: flex; align-items: center; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary);">
-                                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; margin: 0; width: 100%;">
-                                                <input type="checkbox" name="recipients" value="${block.value}" 
-                                                       data-title="${block.title}" data-guid="${block.guid}" 
-                                                       data-type="${block.type || 'value'}" data-block="${index}" checked
-                                                       style="margin: 0;">
-                                                <div class="checkbox-text" style="flex: 1; display: flex; align-items: center; gap: 1rem;">
-                                                    <div style="font-weight: 600; color: var(--text-primary); font-size: 1rem; min-width: 120px;">
+                                        <label class="recipient-item" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); cursor: pointer; transition: all 0.2s ease;">
+                                            <input type="checkbox" name="recipients" value="${block.value}" 
+                                                   data-title="${block.title}" data-guid="${block.guid}" 
+                                                   data-type="${block.type || 'value'}" data-block="${index}" data-group="${groupKey}"
+                                                   style="margin: 0;">
+                                            
+                                            <div class="recipient-info" style="flex: 1; min-width: 0;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+                                                    <span style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">
                                                         ${block.title}
-                                                    </div>
-                                                    <div style="font-size: 0.85rem; color: var(--text-muted); font-family: monospace; word-break: break-all; flex: 1;">
-                                                        ${block.value}
-                                                    </div>
-                                                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; min-width: 80px; text-align: right;">
+                                                    </span>
+                                                    <span style="background: var(--accent-primary); color: white; padding: 0.125rem 0.375rem; border-radius: 3px; font-size: 0.65rem; text-transform: uppercase;">
                                                         ${block.type}
-                                                    </div>
+                                                    </span>
+                                                    ${block.split ? `<span style="background: var(--accent-secondary); color: white; padding: 0.125rem 0.375rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600;">${block.split}%</span>` : ''}
                                                 </div>
-                                            </label>
-                                        </div>
+                                                <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace; word-break: break-all; line-height: 1.2;">
+                                                    ${block.value}
+                                                </div>
+                                            </div>
+                                        </label>
                                     `).join('')}
                                 </div>
                             </div>
                         </div>
                     `).join('')}
                     
-                    <p class="help-text" style="text-align: center; color: var(--text-secondary); font-style: italic; margin-top: 2rem;">
-                        ✅ Check the recipients you want to send payments to
-                    </p>
+                    <div style="text-align: center; color: var(--text-muted); font-size: 0.85rem; margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+                        Select recipients to include in payments
+                    </div>
                 </div>
             `;
             
@@ -1222,62 +1221,222 @@
                 const recipientCheckboxes = document.querySelectorAll('input[name="recipients"]:checked');
                 
                 if (recipientCheckboxes.length === 0) {
-                    throw new Error('Please select at least one recipient from the parsed value blocks');
+                    throw new Error('Please select at least one recipient. Use the group checkboxes next to "Channel Default Splits" or episode titles to select recipients.');
                 }
                 
                 recipientCheckboxes.forEach(checkbox => {
                     const recipient = checkbox.value;
                     const type = checkbox.dataset.type;
+                    const title = checkbox.dataset.title;
+                    const guid = checkbox.dataset.guid;
                     const blockIndex = parseInt(checkbox.dataset.block);
                     const block = window.parsedValueBlocks[blockIndex];
                     
                     selectedRecipients.push({
                         address: recipient,
                         type: type,
+                        title: title || block?.title,
+                        split: block?.split,
+                        guid: guid || block?.guid,
                         block: block
                     });
                 });
                 
                 console.log('🎯 Selected recipients:', selectedRecipients);
+                console.log('🔍 Recipients with splits:', selectedRecipients.map(r => ({
+                    title: r.title,
+                    split: r.split,
+                    type: r.type
+                })));
                 
-                // For now, we'll send to the first selected recipient
-                // In a real implementation, you might want to split the payment or send to all
-                const primaryRecipient = selectedRecipients[0];
-                const destination = primaryRecipient.address;
+                // Calculate total split percentage for selected recipients
+                const totalSplit = selectedRecipients.reduce((sum, recipient) => {
+                    return sum + (parseFloat(recipient.split) || 0);
+                }, 0);
                 
-                btn.innerHTML = '⚡ Sending payment...';
-                console.log('🚀 Sending keysend payment:', { amount, destination, message, recipientType: primaryRecipient.type });
+                console.log('📊 Total split percentage:', totalSplit);
                 
-                // Send the keysend payment
-                const paymentResult = await nwcjs.payKeysend(nwcInfo, destination, amount, message, 15);
-                
-                if (!paymentResult || paymentResult.error) {
-                    throw new Error('Payment failed: ' + (paymentResult?.error?.message || 'Unknown error'));
+                if (totalSplit === 0) {
+                    throw new Error(`Selected recipients have no split percentages defined. Found ${selectedRecipients.length} recipients but none have valid split percentages. Try re-parsing the RSS feed or selecting different recipients.`);
                 }
                 
-                console.log('✅ Payment successful:', paymentResult);
+                // Calculate individual payment amounts based on splits
+                const paymentsToMake = [];
+                const lightningAddressSkipped = [];
                 
-                // Generate payment proof
+                selectedRecipients.forEach(recipient => {
+                    const splitPercentage = parseFloat(recipient.split) || 0;
+                    const splitAmount = Math.floor((amount * splitPercentage) / totalSplit);
+                    
+                    if (splitAmount > 0) {
+                        if (recipient.type === 'node' && recipient.address.match(/^[0-9a-fA-F]{66}$/)) {
+                            // Valid node pubkey - can use keysend
+                            paymentsToMake.push({
+                                ...recipient,
+                                amount: splitAmount,
+                                method: 'keysend'
+                            });
+                        } else if (recipient.type === 'lnaddress' && recipient.address.includes('@')) {
+                            // Lightning address - not supported by current NWC implementation
+                            lightningAddressSkipped.push({
+                                ...recipient,
+                                amount: splitAmount,
+                                method: 'lnurl',
+                                reason: 'pay_invoice method not supported by wallet'
+                            });
+                        } else {
+                            // Invalid or unsupported address format
+                            lightningAddressSkipped.push({
+                                ...recipient,
+                                amount: splitAmount,
+                                method: 'unsupported',
+                                reason: 'Invalid format'
+                            });
+                        }
+                    }
+                });
+                
+                if (paymentsToMake.length === 0) {
+                    throw new Error(`No valid recipients selected. Found ${lightningAddressSkipped.length} unsupported addresses. Please select node pubkeys or Lightning addresses.`);
+                }
+                
+                console.log('💰 Payments to make:', paymentsToMake);
+                console.log('📧 Lightning addresses skipped:', lightningAddressSkipped);
+                
+                btn.innerHTML = `⚡ Sending ${paymentsToMake.length} payments...`;
+                
+                // Send payments to all valid node recipients
+                const paymentResults = [];
+                let totalSent = 0;
+                
+                for (let i = 0; i < paymentsToMake.length; i++) {
+                    const payment = paymentsToMake[i];
+                    
+                    btn.innerHTML = `⚡ Payment ${i + 1}/${paymentsToMake.length}: ${payment.title}...`;
+                    
+                    console.log(`🚀 Sending payment ${i + 1}/${paymentsToMake.length}:`, {
+                        recipient: payment.title,
+                        amount: payment.amount,
+                        split: payment.split + '%',
+                        destination: payment.address
+                    });
+                    
+                    try {
+                        let result;
+                        
+                        if (payment.method === 'keysend') {
+                            // Send keysend payment to node pubkey
+                            result = await nwcjs.payKeysend_OLD(nwcInfo, payment.address, payment.amount, `${message} (${payment.split}% split to ${payment.title})`, 15);
+                        } else if (payment.method === 'lnurl') {
+                            // For now, skip Lightning addresses since pay_invoice isn't responding
+                            // This is a known limitation - some NWC providers don't support pay_invoice
+                            console.log(`⚠️ Skipping Lightning address payment to ${payment.title} - pay_invoice not supported by wallet`);
+                            throw new Error('Lightning address payments not supported by current wallet (pay_invoice method not responding)');
+                        }
+                        
+                        // Check for successful payment according to NIP-47 spec
+                        if (result && result.result_type && !result.error) {
+                            const paymentHash = result.result?.payment_hash || result.result?.preimage || 'N/A';
+                            paymentResults.push({
+                                recipient: payment.title,
+                                amount: payment.amount,
+                                split: payment.split,
+                                method: payment.method,
+                                success: true,
+                                result: result,
+                                hash: paymentHash,
+                                preimage: result.result?.preimage,
+                                fees_paid: result.result?.fees_paid
+                            });
+                            totalSent += payment.amount;
+                            console.log(`✅ Payment ${i + 1} successful (${payment.method}):`, payment.title, payment.amount, 'sats');
+                        } else {
+                            // Handle NIP-47 errors (PAYMENT_FAILED, etc.)
+                            const errorMsg = result?.error?.message || result?.error?.code || 'Payment failed - no response received';
+                            throw new Error(errorMsg);
+                        }
+                    } catch (error) {
+                        console.error(`❌ Payment ${i + 1} failed:`, error);
+                        paymentResults.push({
+                            recipient: payment.title,
+                            amount: payment.amount,
+                            split: payment.split,
+                            method: payment.method,
+                            success: false,
+                            error: error.message
+                        });
+                    }
+                    
+                    // Small delay between payments
+                    if (i < paymentsToMake.length - 1) {
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                }
+                
+                console.log('✅ All payments completed:', paymentResults);
+                
+                // Filter payment results
+                const successfulPayments = paymentResults.filter(p => p.success);
+                const failedPayments = paymentResults.filter(p => !p.success);
+                
+                // Generate payment proof for all payments
                 const paymentProof = {
-                    type: 'keysend',
-                    destination: destination,
-                    recipient_type: primaryRecipient.type,
-                    amount_msat: amount * 1000,
-                    amount_sats: amount,
+                    type: 'split_keysend',
+                    total_amount_msat: amount * 1000,
+                    total_amount_sats: amount,
+                    amount_sent: totalSent,
                     message: message,
                     timestamp: new Date().toISOString(),
-                    payment_hash: paymentResult.result?.payment_hash || `proof_${Date.now()}`,
-                    preimage: paymentResult.result?.preimage || null,
-                    success: true,
-                    block_info: {
-                        title: primaryRecipient.block.title,
-                        guid: primaryRecipient.block.guid
-                    }
+                    successful_payments: successfulPayments.length,
+                    failed_payments: failedPayments.length,
+                    lightning_addresses_skipped: lightningAddressSkipped.length,
+                    payment_details: paymentResults,
+                    success: successfulPayments.length > 0
                 };
                 
-                // Show success
+                // Show success with detailed information about all payments
                 btn.innerHTML = '✅ Success!';
-                alert(`🎉 Payment successful!\n\nAmount: ${amount} sats\nMessage: ${message}\nPayment Hash: ${paymentProof.payment_hash}`);
+                
+                let successMessage = `🎉 Split Payment ${successfulPayments.length > 0 ? 'Successful' : 'Failed'}!
+
+📊 Payment Summary:
+• Total Amount: ${amount} sats
+• Amount Sent: ${totalSent} sats
+• Message: "${message}"
+• Successful Payments: ${successfulPayments.length}
+• Failed Payments: ${failedPayments.length}
+• Lightning Addresses Skipped: ${lightningAddressSkipped.length}
+
+`;
+
+                if (successfulPayments.length > 0) {
+                    successMessage += `✅ Successful Payments:\n`;
+                    successfulPayments.forEach(payment => {
+                        successMessage += `• ${payment.recipient}: ${payment.amount} sats (${payment.split}%)\n`;
+                        successMessage += `  Hash: ${payment.hash?.substring(0, 16)}...\n`;
+                    });
+                    successMessage += `\n`;
+                }
+                
+                if (failedPayments.length > 0) {
+                    successMessage += `❌ Failed Payments:\n`;
+                    failedPayments.forEach(payment => {
+                        successMessage += `• ${payment.recipient}: ${payment.amount} sats (${payment.split}%) - ${payment.error}\n`;
+                    });
+                    successMessage += `\n`;
+                }
+                
+                if (lightningAddressSkipped.length > 0) {
+                    successMessage += `⚠️ Unsupported Addresses:\n`;
+                    lightningAddressSkipped.forEach(recipient => {
+                        successMessage += `• ${recipient.title}: ${recipient.amount} sats (${recipient.split}%) - ${recipient.reason || 'Unsupported format'}\n`;
+                    });
+                    successMessage += `\n`;
+                }
+                
+                successMessage += `💡 Supports: Node pubkeys (keysend) and Lightning addresses (LNURL-pay).`;
+
+                alert(successMessage);
                 
                 // Reset form
                 document.getElementById('payment-amount').value = '';
