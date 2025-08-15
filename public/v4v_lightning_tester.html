@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NWC Demo with MetaBoost Dashboard</title>
+    <title>NWC Demo</title>
     <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon.png">
@@ -214,6 +214,80 @@
             opacity: 0.9;
         }
 
+        .rss-feed-info {
+            margin-bottom: 1rem;
+        }
+
+        .rss-feed-info .form-input {
+            width: 100% !important;
+            max-width: none !important;
+            padding: 0.75rem !important;
+            font-size: 0.85rem !important;
+            border-radius: 6px !important;
+            border: 2px solid var(--border-color) !important;
+            background: var(--bg-secondary) !important;
+            transition: all 0.3s ease !important;
+            box-sizing: border-box !important;
+            min-height: 50px !important;
+            height: auto !important;
+            line-height: 1.3 !important;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace !important;
+            word-break: break-all !important;
+            overflow-wrap: anywhere !important;
+            white-space: normal !important;
+            margin-left: 0 !important;
+            margin-right: 0 !important;
+            text-overflow: clip !important;
+            overflow: visible !important;
+        }
+
+        .rss-feed-info .form-input:focus {
+            border-color: var(--accent-primary);
+            border-width: 2px;
+            box-shadow: 0 0 0 3px rgba(0, 102, 204, 0.1);
+            transform: translateY(-1px);
+        }
+
+        .rss-feed-info .form-label {
+            font-size: 1rem;
+            margin-bottom: 0.75rem;
+            color: var(--text-primary);
+            font-weight: 700;
+        }
+
+        .rss-description {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+            line-height: 1.6;
+            font-size: 0.95rem;
+        }
+
+        .rss-status {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+            padding: 1rem;
+            background: var(--bg-secondary);
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-icon {
+            font-size: 1.2rem;
+        }
+
+        .status-text {
+            color: var(--text-secondary);
+            font-size: 0.9rem;
+        }
+
         .quick-test {
             background: var(--accent-secondary);
             border-radius: 6px;
@@ -382,8 +456,7 @@
     <div class="container">
         <header class="header">
             <h1 class="title">NWC Demo</h1>
-            <p style="color: #f7931e; margin-top: 0.5rem;">Now with MetaBoost Dashboard! 🚀</p>
-            <p class="subtitle">Test Lightning payments to podcast value blocks and node pubkeys with modern blockchain technology</p>
+                    <p style="color: #f7931e; margin-top: 0.5rem;">NWC Wallet Testing with RSS Feeds! 🚀</p>
         </header>
 
         <div class="card">
@@ -392,45 +465,50 @@
                 <h2 class="card-title">RSS Feed</h2>
             </div>
             
-            <div class="form-group">
-                <label class="form-label">Podcast RSS Feed URL</label>
-                <input type="url" id="rss-feed-url" placeholder="RSS Feed URL" 
-               value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl-test-feed.xml">
-            </div>
-            
-            <div class="button-group">
-                <button class="btn btn-primary" onclick="parseValueBlock()">
-                    <span class="lightning-icon">⚡</span> Parse Value Block
-                </button>
-                <button class="btn btn-danger" onclick="clearSettings()">
-                    🗑️ Clear Settings
-                </button>
-            </div>
-        </div>
-
-        <div class="card">
-            <div class="card-header">
-                <div class="card-icon">🚀</div>
-                <h2 class="card-title">Quick Test Feeds</h2>
-            </div>
-            
-            <div class="quick-test">
-                <div class="quick-test-content">
-                    <div class="quick-test-info">
-                        <div class="quick-test-title">
-                            <span class="lightning-icon">⚡</span>
-                            Chad's Test Feed
-                        </div>
-                        <div class="quick-test-description">
-                            LNURL test feed with Lightning addresses and node pubkeys
-                        </div>
+            <div class="rss-feed-info">
+                <p class="rss-description">
+                    Load a podcast RSS feed to extract Lightning payment value blocks, node pubkeys, and Lightning addresses for NWC wallet testing.
+                </p>
+                
+                <div class="form-group">
+                    <label class="form-label">Podcast RSS Feed URL</label>
+                    <input type="url" id="rss-feed-url" class="form-input" placeholder="RSS Feed URL" 
+                   value="https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl-test-feed.xml">
+                    <div style="margin-top: 0.5rem; font-size: 0.9rem; color: var(--text-muted);">
+                        💡 <a href="https://podcastindex.org/podcast/7405721" target="_blank" style="color: var(--accent-primary); text-decoration: none;">View this podcast on Podcast Index</a> for more information
                     </div>
+                </div>
+                
+                <div class="rss-status">
+                    <div class="status-item">
+                        <span class="status-icon">📊</span>
+                        <span class="status-text">Feed Status: <span id="feed-status">Not Loaded</span></span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-icon">⚡</span>
+                        <span class="status-text">Value Blocks: <span id="value-blocks-count">0</span></span>
+                    </div>
+                    <div class="status-item">
+                        <span class="status-icon">🔑</span>
+                        <span class="status-text">Payment Methods: <span id="payment-methods-count">0</span></span>
+                    </div>
+                </div>
+                
+                <div class="button-group">
+                    <button class="btn btn-primary" onclick="parseValueBlock()">
+                        <span class="lightning-icon">⚡</span> Parse Value Block
+                    </button>
                     <button class="btn btn-success" onclick="loadTestFeed()">
                         📂 Load Test Feed
+                    </button>
+                    <button class="btn btn-danger" onclick="clearSettings()">
+                        🗑️ Clear Settings
                     </button>
                 </div>
             </div>
         </div>
+
+
 
         <div class="card">
             <div class="card-header">
@@ -508,54 +586,7 @@
             </div>
         </div>
 
-        <!-- MetaBoost Dashboard Section -->
-        <div class="card" style="background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%); border: none;">
-            <div class="card-header">
-                <div class="card-icon">🚀</div>
-                <h2 class="card-title">MetaBoost Dashboard</h2>
-            </div>
-            
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 1rem; margin-bottom: 1.5rem;">
-                <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">⚡</div>
-                    <div style="font-size: 2rem; font-weight: bold; color: #fff;" id="metaboost-count">0</div>
-                    <div style="opacity: 0.9;">Total MetaBoosts</div>
-                </div>
-                
-                <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">💎</div>
-                    <div style="font-size: 2rem; font-weight: bold; color: #fff;" id="metaboost-sats">0</div>
-                    <div style="opacity: 0.9;">Total Sats Boosted</div>
-                </div>
-                
-                <div style="background: rgba(255, 255, 255, 0.1); border-radius: 12px; padding: 1.5rem; text-align: center;">
-                    <div style="font-size: 2.5rem; margin-bottom: 0.5rem;">🔥</div>
-                    <div style="font-size: 2rem; font-weight: bold; color: #00ff88;" id="metaboost-status">LIVE</div>
-                    <div style="opacity: 0.9;">Endpoint Status</div>
-                </div>
-            </div>
-            
-            <div style="background: rgba(0, 0, 0, 0.2); border-radius: 8px; padding: 1rem; margin-bottom: 1.5rem;">
-                <h3 style="margin-bottom: 0.5rem; color: #fff;">📡 Your MetaBoost Endpoint</h3>
-                <div style="font-family: monospace; background: rgba(0, 0, 0, 0.3); padding: 0.75rem; border-radius: 4px; word-break: break-all;">
-                    POST https://v4v-lightning-payment-tester-ec9iywsi9-chadfs-projects.vercel.app/api/metaboost
-                </div>
-                <p style="margin-top: 0.5rem; opacity: 0.9; font-size: 0.9rem;">
-                    Add this URL to your RSS feed's &lt;podcast:metaBoost&gt; tag to receive boost metadata
-                </p>
-            </div>
-            
-            <div class="button-group">
-                <button class="btn" style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3);" onclick="testMetaBoostEndpoint()">
-                    🧪 Test MetaBoost Endpoint
-                </button>
-                <button class="btn" style="background: rgba(255, 255, 255, 0.2); border: 2px solid rgba(255, 255, 255, 0.3);" onclick="refreshMetaBoostStats()">
-                    🔄 Refresh Stats
-                </button>
-            </div>
-            
-            <div id="metaboost-test-result" style="margin-top: 1rem;"></div>
-        </div>
+
 
         <div class="status-bar">
             <span class="status-indicator"></span>
@@ -603,7 +634,7 @@
                         'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/main/public/lnurl-test-feed.xml',
                         'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/master/public/lnurl-test-feed.xml',
                         'https://raw.githubusercontent.com/ChadFarrow/lnurl-test-feed/refs/heads/main/public/lnurl-test-feed.xml',
-                        'metaboost-test-feed.xml',
+
                         'https://feeds.transistor.fm/lightning-junkies'
                     ];
                     
@@ -638,34 +669,87 @@
                     throw new Error('XML parsing failed: ' + parseError.textContent);
                 }
                 
-                // Extract value blocks
+                // Extract value blocks with proper grouping
                 const valueBlocks = [];
+                
+                // First, check for channel-level value blocks ONLY
+                const channelValues = xmlDoc.querySelectorAll('channel > podcast\\:value, channel > value');
+                console.log('🔍 Found channel values:', channelValues.length);
+                
+                channelValues.forEach((channelValue, index) => {
+                    // Only get recipients that are direct children of the channel value block
+                    const recipients = channelValue.querySelectorAll(':scope > podcast\\:valueRecipient, :scope > valueRecipient');
+                    console.log(`📡 Channel ${index} has ${recipients.length} recipients`);
+                    
+                    recipients.forEach((recipient, recIndex) => {
+                        const name = recipient.getAttribute('name') || `Channel Recipient ${recIndex + 1}`;
+                        const type = recipient.getAttribute('type') || 'unknown';
+                        const address = recipient.getAttribute('address') || '';
+                        const split = recipient.getAttribute('split') || '';
+                        
+                        console.log(`  - ${name}: ${type} (${split}%) - ${address.substring(0, 20)}...`);
+                        
+                        if (address) {
+                            valueBlocks.push({
+                                title: name,
+                                value: address,
+                                description: `Channel-level ${type} recipient`,
+                                guid: `channel-${index}-${recIndex}`,
+                                type: type,
+                                split: split,
+                                group: 'channel',
+                                groupTitle: 'Channel Level'
+                            });
+                        }
+                    });
+                });
+                
+                // Then check for item-level value blocks ONLY
                 const items = xmlDoc.querySelectorAll('item');
+                console.log('🔍 Found items:', items.length);
                 
                 items.forEach((item, index) => {
                     const title = item.querySelector('title')?.textContent || `Episode ${index + 1}`;
                     const description = item.querySelector('description')?.textContent || '';
                     const guid = item.querySelector('guid')?.textContent || `episode-${index + 1}`;
+                    const episodeNumber = index + 1;
                     
-                    // Look for metaBoost value blocks
-                    const valueElement = item.querySelector('podcast\\:value, value');
-                    if (valueElement) {
-                        const metaBoostElement = valueElement.querySelector('podcast\\:metaBoost, metaBoost');
-                        if (metaBoostElement) {
-                            // Extract the metaBoost endpoint URL
-                            const metaBoostUrl = metaBoostElement.textContent;
-                            valueBlocks.push({
-                                title,
-                                value: metaBoostUrl,
-                                description,
-                                guid,
-                                type: 'metaBoost',
-                                endpoint: metaBoostUrl
-                            });
-                        }
-                    }
+                    console.log(`📺 Episode ${episodeNumber}: ${title}`);
                     
-                    // Also look for traditional value patterns
+                    // Look for podcast:value blocks that are direct children of the item
+                    const itemValues = item.querySelectorAll(':scope > podcast\\:value, :scope > value');
+                    console.log(`  - Has ${itemValues.length} value blocks`);
+                    
+                    itemValues.forEach((itemValue, valIndex) => {
+                        // Only get recipients that are direct children of the item value block
+                        const recipients = itemValue.querySelectorAll(':scope > podcast\\:valueRecipient, :scope > valueRecipient');
+                        console.log(`    - Value block ${valIndex} has ${recipients.length} recipients`);
+                        
+                        recipients.forEach((recipient, recIndex) => {
+                            const name = recipient.getAttribute('name') || `Recipient ${recIndex + 1}`;
+                            const type = recipient.getAttribute('type') || 'unknown';
+                            const address = recipient.getAttribute('address') || '';
+                            const split = recipient.getAttribute('split') || '';
+                            
+                            console.log(`      - ${name}: ${type} (${split}%) - ${address.substring(0, 20)}...`);
+                            
+                            if (address) {
+                                valueBlocks.push({
+                                    title: `${name}`,
+                                    value: address,
+                                    description: `Episode ${episodeNumber} ${type} recipient`,
+                                    guid: `${guid}-${valIndex}-${recIndex}`,
+                                    type: type,
+                                    split: split,
+                                    group: 'episode',
+                                    groupTitle: `Episode ${episodeNumber}: ${title}`,
+                                    episodeNumber: episodeNumber
+                                });
+                            }
+                        });
+                    });
+                    
+                    // Also look for traditional value patterns as fallback
                     const valueMatch = description.match(/value="([^"]+)"/);
                     if (valueMatch && !valueBlocks.some(block => block.guid === guid)) {
                         valueBlocks.push({
@@ -673,28 +757,13 @@
                             value: valueMatch[1],
                             description,
                             guid,
-                            type: 'traditional'
+                            type: 'traditional',
+                            group: 'episode',
+                            groupTitle: `Episode ${episodeNumber}: ${title}`,
+                            episodeNumber: episodeNumber
                         });
                     }
                 });
-                
-                // If no items found, check for channel-level value blocks
-                if (valueBlocks.length === 0) {
-                    const channelValue = xmlDoc.querySelector('channel podcast\\:value, channel value');
-                    if (channelValue) {
-                        const channelMetaBoost = channelValue.querySelector('podcast\\:metaBoost, metaBoost');
-                        if (channelMetaBoost) {
-                            valueBlocks.push({
-                                title: 'Channel Level',
-                                value: channelMetaBoost.textContent,
-                                description: 'Channel-level metaBoost endpoint',
-                                guid: 'channel-level',
-                                type: 'metaBoost',
-                                endpoint: channelMetaBoost.textContent
-                            });
-                        }
-                    }
-                }
                 
                 if (valueBlocks.length === 0) {
                     // If no value blocks found, create a test one
@@ -736,6 +805,21 @@
                 updateValueBlockDisplay(fallbackBlocks);
                 
                 alert(`RSS parsing failed: ${error.message}\n\nUsing fallback test data instead.`);
+            }
+        }
+        
+        function toggleGroupSplits(groupKey) {
+            const contentElement = document.getElementById(`group-content-${groupKey}`);
+            const toggleIcon = document.getElementById(`group-toggle-${groupKey}`);
+            
+            if (contentElement.style.display === 'none') {
+                contentElement.style.display = 'block';
+                toggleIcon.style.transform = 'rotate(180deg)';
+                toggleIcon.textContent = '▲';
+            } else {
+                contentElement.style.display = 'none';
+                toggleIcon.style.transform = 'rotate(0deg)';
+                toggleIcon.textContent = '▼';
             }
         }
         
@@ -793,39 +877,93 @@
             let container = document.getElementById('value-blocks-container');
             if (!container) {
                 console.log('⚠️ Value blocks container not found, creating one...');
-                // Create container if it doesn't exist
-                const form = document.querySelector('form') || document.querySelector('.form-container') || document.body;
-                console.log('🔍 Found form element:', form);
+                // Create container if it doesn't exist - insert after RSS Feed card
+                const rssCard = document.querySelector('.card');
                 const newContainer = document.createElement('div');
                 newContainer.id = 'value-blocks-container';
-                newContainer.className = 'value-blocks-section';
-                newContainer.innerHTML = '<h3>📡 Parsed Value Blocks</h3>';
-                form.appendChild(newContainer);
+                newContainer.className = 'card';
+                newContainer.innerHTML = '<div class="card-header"><div class="card-icon">📡</div><h2 class="card-title">Parsed Value Blocks</h2></div>';
+                rssCard.insertAdjacentElement('afterend', newContainer);
                 container = newContainer;
-                console.log('✅ Created new container:', container);
+                console.log('✅ Created new container after RSS card:', container);
             }
             
-            const html = `
-                <h3>📡 Parsed Value Blocks (${valueBlocks.length})</h3>
-                <div class="success-message" style="background: #d4edda; color: #155724; padding: 0.75rem; border-radius: 4px; margin-bottom: 1rem; border: 1px solid #c3e6cb;">
-                    ✅ Successfully parsed ${valueBlocks.length} value block${valueBlocks.length !== 1 ? 's' : ''} from RSS feed!
-                </div>
-                <div class="value-blocks-list">
-                    ${valueBlocks.map((block, index) => `
-                        <div class="value-block-item">
-                            <label class="checkbox-label">
-                                <input type="checkbox" name="recipients" value="${block.value}" 
-                                       data-title="${block.title}" data-guid="${block.guid}" 
-                                       data-type="${block.type || 'metaBoost'}" data-block="${index}" checked>
-                            <span class="checkbox-text">
-                                <strong>${block.title}</strong>
-                                <br><small>${block.value.substring(0, 50)}...</small>
-                            </span>
-                        </label>
+                            // Group value blocks by channel and episode
+                const groupedBlocks = {};
+                valueBlocks.forEach(block => {
+                    const groupKey = block.group === 'channel' ? 'channel' : `episode-${block.episodeNumber}`;
+                    if (!groupedBlocks[groupKey]) {
+                        groupedBlocks[groupKey] = {
+                            title: block.groupTitle,
+                            blocks: []
+                        };
+                    }
+                    groupedBlocks[groupKey].blocks.push(block);
+                });
+
+                const html = `
+                <div class="card-header"><div class="card-icon">📡</div><h2 class="card-title">Parsed Value Blocks (${valueBlocks.length})</h2></div>
+                <div style="padding: 2rem;">
+                    <div class="success-message" style="background: #d4edda; color: #155724; padding: 0.75rem; border-radius: 4px; margin-bottom: 1.5rem; border: 1px solid #c3e6cb;">
+                        ✅ Successfully parsed ${valueBlocks.length} value block${valueBlocks.length !== 1 ? 's' : ''} from RSS feed!
                     </div>
+                    
+                    ${Object.entries(groupedBlocks).map(([groupKey, group]) => `
+                        <div class="value-group" style="margin-bottom: 2.5rem; background: var(--bg-card); border-radius: 12px; overflow: hidden; border: 1px solid var(--border-color);">
+                            <div class="group-header" style="background: var(--bg-secondary); padding: 1.5rem; border-bottom: 1px solid var(--border-color);">
+                                <h3 style="margin: 0; color: var(--text-primary); font-size: 1.2rem; font-weight: 600;">
+                                    ${group.title}
+                                </h3>
+                            </div>
+                            
+                            <div class="group-splits-dropdown" style="border-bottom: 1px solid var(--border-color); overflow: hidden;">
+                                <div class="dropdown-header" style="display: flex; align-items: center; justify-content: space-between; padding: 0.75rem; background: var(--bg-secondary); cursor: pointer; border-bottom: 1px solid var(--border-color);" onclick="toggleGroupSplits('${groupKey}')">
+                                    <span style="font-weight: 600; color: var(--text-primary);">📊 Split Information</span>
+                                    <span style="color: var(--text-muted); font-size: 1.2rem; transition: transform 0.2s ease;" id="group-toggle-${groupKey}">▼</span>
+                                </div>
+                                <div class="dropdown-content" id="group-content-${groupKey}" style="display: none; padding: 1rem; background: var(--bg-primary);">
+                                    <div style="display: grid; grid-template-columns: auto 1fr auto; gap: 0.75rem; font-size: 0.9rem; align-items: center;">
+                                        ${group.blocks.map(block => `
+                                            <div style="color: var(--text-primary); font-weight: 500;">${block.title}</div>
+                                            <div style="color: var(--text-muted);">${block.type} recipient</div>
+                                            ${block.split ? `<div style="color: var(--accent-primary); font-weight: 600; text-align: right;">${block.split}%</div>` : '<div style="color: var(--text-muted); text-align: right;">-</div>'}
+                                        `).join('')}
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="group-content" style="padding: 1.5rem;">
+                                <div class="value-blocks-list" style="display: flex; flex-direction: column; gap: 0.5rem;">
+                                    ${group.blocks.map((block, index) => `
+                                        <div class="value-block-item" style="display: flex; align-items: center; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary);">
+                                            <label class="checkbox-label" style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; margin: 0; width: 100%;">
+                                                <input type="checkbox" name="recipients" value="${block.value}" 
+                                                       data-title="${block.title}" data-guid="${block.guid}" 
+                                                       data-type="${block.type || 'value'}" data-block="${index}" checked
+                                                       style="margin: 0;">
+                                                <div class="checkbox-text" style="flex: 1; display: flex; align-items: center; gap: 1rem;">
+                                                    <div style="font-weight: 600; color: var(--text-primary); font-size: 1rem; min-width: 120px;">
+                                                        ${block.title}
+                                                    </div>
+                                                    <div style="font-size: 0.85rem; color: var(--text-muted); font-family: monospace; word-break: break-all; flex: 1;">
+                                                        ${block.value}
+                                                    </div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.05em; min-width: 80px; text-align: right;">
+                                                        ${block.type}
+                                                    </div>
+                                                </div>
+                                            </label>
+                                        </div>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
                     `).join('')}
+                    
+                    <p class="help-text" style="text-align: center; color: var(--text-secondary); font-style: italic; margin-top: 2rem;">
+                        ✅ Check the recipients you want to send payments to
+                    </p>
                 </div>
-                <p class="help-text">✅ Check the recipients you want to send payments to</p>
             `;
             
             console.log('🎨 Setting container HTML:', html.substring(0, 100) + '...');
@@ -1119,7 +1257,7 @@
                 
                 console.log('✅ Payment successful:', paymentResult);
                 
-                // Generate payment proof for metaBoost
+                // Generate payment proof
                 const paymentProof = {
                     type: 'keysend',
                     destination: destination,
@@ -1137,39 +1275,9 @@
                     }
                 };
                 
-                // Submit metaBoost with payment proof
-                btn.innerHTML = '📤 Submitting metaBoost...';
-                const metaBoostData = {
-                    amount: amount,
-                    paymentProof: JSON.stringify(paymentProof),
-                    message: message,
-                    recipients: selectedRecipients.map(r => r.address),
-                    feedUrl: document.querySelector('input[type="url"]').value,
-                    episodeGuid: primaryRecipient.block.guid,
-                    timestamp: new Date().toISOString(),
-                    appName: 'V4V Lightning Tester',
-                    senderName: 'Anonymous',
-                    boostId: `boost_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-                    action: 'boost',
-                    podcast: primaryRecipient.block.title
-                };
-                
-                const metaBoostResponse = await fetch('/api/metaboost', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(metaBoostData)
-                });
-                
-                if (!metaBoostResponse.ok) {
-                    throw new Error('Failed to submit metaBoost: ' + metaBoostResponse.statusText);
-                }
-                
-                const metaBoostResult = await metaBoostResponse.json();
-                console.log('✅ MetaBoost submitted:', metaBoostResult);
-                
                 // Show success
                 btn.innerHTML = '✅ Success!';
-                alert(`🎉 Payment and MetaBoost successful!\n\nAmount: ${amount} sats\nMessage: ${message}\nPayment Hash: ${paymentProof.payment_hash}\nBoost ID: ${metaBoostResult.boostId}\n\nView your boost at: /api/metaboost-viewer`);
+                alert(`🎉 Payment successful!\n\nAmount: ${amount} sats\nMessage: ${message}\nPayment Hash: ${paymentProof.payment_hash}`);
                 
                 // Reset form
                 document.getElementById('payment-amount').value = '';
@@ -1221,114 +1329,11 @@
             alert('Check console for current state information');
         }
 
-        // MetaBoost Dashboard Functions
-        function updateMetaBoostStats() {
-            // Update with random sample data for demo
-            const count = Math.floor(Math.random() * 50) + 10;
-            const sats = Math.floor(Math.random() * 10000) + 1000;
-            
-            document.getElementById('metaboost-count').textContent = count;
-            document.getElementById('metaboost-sats').textContent = sats.toLocaleString();
-        }
 
-        async function testMetaBoostEndpoint() {
-            const resultDiv = document.getElementById('metaboost-test-result');
-            const statusDiv = document.getElementById('metaboost-status');
-            
-            resultDiv.innerHTML = '<div style="color: #ffeb3b;">⏳ Testing MetaBoost endpoint...</div>';
-            statusDiv.textContent = 'TESTING';
-            statusDiv.style.color = '#ffeb3b';
-            
-            const testData = {
-                amount: 21,
-                paymentProof: {
-                    type: "test",
-                    success: true,
-                    payment_hash: "test_" + Date.now(),
-                    amount_sats: 21
-                },
-                message: "Test boost from dashboard!",
-                podcast: "V4V Lightning Tester",
-                episode: "Dashboard Test",
-                appName: "MetaBoost Dashboard",
-                senderName: "Test User",
-                timestamp: new Date().toISOString()
-            };
-            
-            try {
-                const response = await fetch('/api/metaboost', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(testData)
-                });
-                
-                const result = await response.json();
-                
-                if (response.ok) {
-                    resultDiv.innerHTML = `
-                        <div style="color: #00ff88; padding: 1rem; background: rgba(0, 255, 136, 0.1); border-radius: 8px;">
-                            <strong>✅ Success!</strong> MetaBoost endpoint is working<br>
-                            <strong>Response:</strong> ${result.message || 'MetaBoost received'}<br>
-                            <strong>Test Amount:</strong> 21 sats
-                        </div>
-                    `;
-                    statusDiv.textContent = 'LIVE';
-                    statusDiv.style.color = '#00ff88';
-                    
-                    // Update stats
-                    const currentCount = parseInt(document.getElementById('metaboost-count').textContent);
-                    const currentSats = parseInt(document.getElementById('metaboost-sats').textContent.replace(/,/g, ''));
-                    document.getElementById('metaboost-count').textContent = currentCount + 1;
-                    document.getElementById('metaboost-sats').textContent = (currentSats + 21).toLocaleString();
-                } else {
-                    throw new Error(result.error || 'Unknown error');
-                }
-            } catch (error) {
-                resultDiv.innerHTML = `
-                    <div style="color: #ff6666; padding: 1rem; background: rgba(255, 102, 102, 0.1); border-radius: 8px;">
-                        <strong>❌ Error:</strong> ${error.message}<br>
-                        The endpoint may be experiencing issues.
-                    </div>
-                `;
-                statusDiv.textContent = 'ERROR';
-                statusDiv.style.color = '#ff6666';
-            }
-        }
 
-        function refreshMetaBoostStats() {
-            updateMetaBoostStats();
-            checkMetaBoostEndpointStatus();
-        }
 
-        async function checkMetaBoostEndpointStatus() {
-            try {
-                const response = await fetch('/api/metaboost', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ test: true, amount: 1, paymentProof: { type: 'health-check' } })
-                });
-                
-                const statusDiv = document.getElementById('metaboost-status');
-                if (response.status !== 404) {
-                    statusDiv.textContent = 'LIVE';
-                    statusDiv.style.color = '#00ff88';
-                } else {
-                    statusDiv.textContent = 'OFFLINE';
-                    statusDiv.style.color = '#ff6666';
-                }
-            } catch (error) {
-                document.getElementById('metaboost-status').textContent = 'UNKNOWN';
-                document.getElementById('metaboost-status').style.color = '#ffeb3b';
-            }
-        }
 
-        // Initialize dashboard on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            updateMetaBoostStats();
-            checkMetaBoostEndpointStatus();
-        });
+
     </script>
 </body>
 </html>

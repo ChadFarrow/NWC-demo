@@ -1,6 +1,6 @@
 const express = require('express');
 const app = express();
-const PORT = process.env.PORT || 3003;
+const PORT = 3003;
 
 // Middleware to parse JSON bodies
 app.use(express.json());
@@ -8,10 +8,11 @@ app.use(express.json());
 // Serve static files from public directory
 app.use(express.static('public'));
 
-
-
-// Remove the root endpoint since we're serving static files
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok', port: PORT });
+});
 
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-}); 
+  console.log(`Working server running on port ${PORT}`);
+});
