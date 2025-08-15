@@ -1,14 +1,12 @@
-# Project Split Snapshot - July 12, 2025
+# Project Split Snapshot - 7/12/25
 
-## Major Changes: Separated Splitbox into Independent Project
-
-### Summary
-Successfully split the V4V Lightning Payment Tester project into two focused, independent projects due to growing complexity and different use cases.
+## Overview
+Successfully split the NWC Demo project into two focused, independent projects due to growing complexity and different use cases.
 
 ### Projects Created
 
-#### 1. V4V Lightning Payment Tester (Original - Cleaned)
-- **Repository**: https://github.com/ChadFarrow/v4v-lightning-payment-tester
+#### 1. NWC Demo (Original - Cleaned)
+- **Repository**: https://github.com/ChadFarrow/nwc-demo
 - **Live URL**: https://v4v-lightning-payment-tester.vercel.app
 - **Focus**: Simple RSS feed parsing and Lightning payment testing
 - **Status**: ✅ Deployed and working
@@ -44,7 +42,7 @@ Successfully split the V4V Lightning Payment Tester project into two focused, in
 #### Environment Configuration
 Both projects now have separate environment configurations:
 
-**V4V Lightning Payment Tester:**
+**NWC Demo:**
 - Podcast Index API credentials
 - Simple deployment setup
 
@@ -63,7 +61,7 @@ Both projects now have separate environment configurations:
 
 ### Payment Processing Capabilities
 
-#### V4V Lightning Payment Tester
+#### NWC Demo
 - RSS feed parsing
 - Value block analysis
 - Payment recipient identification
@@ -79,7 +77,7 @@ Both projects now have separate environment configurations:
 
 ### Deployment Status
 
-#### V4V Lightning Payment Tester
+#### NWC Demo
 - ✅ Deployed on Vercel
 - ✅ Working at https://v4v-lightning-payment-tester.vercel.app
 - ✅ Clean codebase
@@ -113,7 +111,7 @@ Both projects now have separate environment configurations:
 
 ### Next Steps
 
-#### For V4V Lightning Payment Tester
+#### For NWC Demo
 - ✅ Continue development as simple testing tool
 - ✅ Focus on RSS feed parsing improvements
 - ✅ Maintain clean, focused scope
@@ -134,7 +132,7 @@ Both projects now have separate environment configurations:
 
 ### Git History
 
-#### V4V Lightning Payment Tester
+#### NWC Demo
 - Backup tag: `backup-before-split`
 - Clean commit: `be694c8`
 - Status: Up to date on GitHub

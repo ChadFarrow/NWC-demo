@@ -1,7 +1,7 @@
 {
-  "name": "v4v-lightning-payment-tester",
+  "name": "nwc-demo",
   "version": "1.0.0",
-  "description": "A simple HTML/CSS/JavaScript application for testing V4V Lightning payments with PodPay integration",
+  "description": "A demo application showcasing Nostr Wallet Connect (NWC) integration with Lightning Network payments",
   "main": "public/v4v_lightning_tester.html",
   "engines": {
     "node": "22.x"

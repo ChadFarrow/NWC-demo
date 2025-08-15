@@ -80,7 +80,7 @@ module.exports = function handler(req, res) {
     <div class="container">
         <div class="header">
             <h1>🚀 MetaBoost Dashboard</h1>
-            <p>Chad's V4V Lightning Payment Tester - Podcasting 2.0 MetaBoost Endpoint</p>
+            <p>Chad's NWC Demo - Podcasting 2.0 MetaBoost Endpoint</p>
         </div>
 
         <div class="success-section">
@@ -91,7 +91,7 @@ module.exports = function handler(req, res) {
 
         <div class="info-section">
             <h2>📡 Endpoint Information</h2>
-            <p>This is the working MetaBoost dashboard for Chad's V4V Lightning Payment Tester.</p>
+            <p>This is the working MetaBoost dashboard for Chad's NWC Demo.</p>
             
             <h3 style="color: #f7931e; margin-top: 1.5rem;">MetaBoost API Endpoint:</h3>
             <div class="endpoint-url">
@@ -118,7 +118,7 @@ module.exports = function handler(req, res) {
         </div>
 
         <div class="footer">
-            <p>🚀 Powered by <strong>V4V Lightning Payment Tester</strong></p>
+            <p>🚀 Powered by <strong>NWC Demo</strong></p>
             <p>✅ MetaBoost Dashboard Working Successfully!</p>
         </div>
     </div>

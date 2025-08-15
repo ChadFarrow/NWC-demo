@@ -1,4 +1,4 @@
-// V4V Lightning Payment Tester - Main Script
+// NWC Demo - Main Script
 // Refactored for clarity and maintainability
 // 
 // 🔑 ARCHITECTURE: NWC strings work independently without browser extensions
@@ -3347,7 +3347,7 @@ async function sendMetaBoostMetadata(event, metaBoostData = null) {
                 episodeGuid: window._currentEpisodeGuid || null,
 
                 // App and sender info
-                appName: 'V4V Lightning Payment Tester',
+                appName: 'NWC Demo',
                 senderName: 'Anonymous Tester',
 
                 // Timestamps
@@ -3572,7 +3572,7 @@ window.handleMetaBoostSubmit = function(event) {
         episodeGuid: window._currentEpisodeGuid || null,
 
         // App and sender info
-        appName: 'V4V Lightning Payment Tester',
+        appName: 'NWC Demo',
         senderName: 'Anonymous Tester',
 
         // Timestamps

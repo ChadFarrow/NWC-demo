@@ -23,7 +23,7 @@ module.exports = function handler(req, res) {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🚀 MetaBoost Dashboard - Chad's V4V Lightning Tester</title>
-    <meta name="description" content="MetaBoost endpoint for Chad's V4V Lightning Payment Tester - Podcasting 2.0 compliant">
+    <meta name="description" content="MetaBoost endpoint for Chad's NWC Demo - Podcasting 2.0 compliant">
     
     <style>
         * {
@@ -220,7 +220,7 @@ module.exports = function handler(req, res) {
     <div class="container">
         <div class="header">
             <h1>🚀 MetaBoost Dashboard</h1>
-            <p>Chad's V4V Lightning Payment Tester - Podcasting 2.0 MetaBoost Endpoint</p>
+            <p>Chad's NWC Demo - Podcasting 2.0 MetaBoost Endpoint</p>
             <p class="pulse">✨ Live and Ready to Receive Boosts!</p>
         </div>
 
@@ -252,7 +252,7 @@ module.exports = function handler(req, res) {
 
         <div class="info-section">
             <h2>📡 Endpoint Information</h2>
-            <p>This is the official MetaBoost endpoint for Chad's V4V Lightning Payment Tester, fully compliant with the <strong>Podcasting 2.0 MetaBoost specification</strong>.</p>
+            <p>This is the official MetaBoost endpoint for Chad's NWC Demo, fully compliant with the <strong>Podcasting 2.0 MetaBoost specification</strong>.</p>
             
             <h3 style="color: #f7931e; margin-top: 1.5rem;">Endpoint URL:</h3>
             <div class="endpoint-url">
@@ -323,14 +323,14 @@ module.exports = function handler(req, res) {
                 <div>RSS Feed with MetaBoost</div>
             </a>
             
-            <a href="https://github.com/ChadFarrow/v4v-lightning-payment-tester" class="link-card" target="_blank">
+            <a href="https://github.com/ChadFarrow/nwc-demo" class="link-card" target="_blank">
                 <span class="link-icon">💻</span>
                 <div>Source Code</div>
             </a>
         </div>
 
         <div class="footer">
-            <p>🚀 Powered by <strong>V4V Lightning Payment Tester</strong></p>
+            <p>🚀 Powered by <strong>NWC Demo</strong></p>
             <p>MetaBoost Dashboard • Podcasting 2.0 Compatible • Built with ⚡ by Chad</p>
         </div>
     </div>
@@ -436,7 +436,7 @@ module.exports = function handler(req, res) {
         podcast: processedBoost.podcast
       },
       meta: {
-        endpoint: 'V4V Lightning Payment Tester MetaBoost Dashboard',
+        endpoint: 'NWC Demo MetaBoost Dashboard',
         version: '2.0.0',
         specification: 'https://github.com/Podcastindex-org/podcast-namespace/discussions/676',
         processed: processedBoost.processingTime

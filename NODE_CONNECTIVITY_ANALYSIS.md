@@ -34,7 +34,7 @@ Your boost payment results show 3 failed payments to Lightning Network nodes wit
 ## How to Use the New Features
 
 ### Option 1: Use the UI Button
-1. Open your V4V Lightning Payment Tester
+1. Open your NWC Demo
 2. Click the "🔍 Test Node Connectivity" button
 3. Enter one of the failed node pubkeys
 4. Review the connectivity test results

@@ -84,13 +84,13 @@ app.post('/api/metaboost-viewer', (req, res) => {
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
-    server: 'v4v-lightning-payment-tester',
+    server: 'nwc-demo',
     timestamp: new Date().toISOString() 
   });
 });
 
 app.listen(PORT, () => {
-  console.log(`🚀 V4V Lightning Payment Tester Server running on http://localhost:${PORT}`);
+  console.log(`🚀 NWC Demo Server running on http://localhost:${PORT}`);
   console.log(`📄 Test MetaBoost Feed: http://localhost:${PORT}/test-metaboost-feed.html`);
   console.log(`📊 MetaBoost Viewer: http://localhost:${PORT}/test-metaboost.html`);
   console.log(`🏠 Main App: http://localhost:${PORT}/`);

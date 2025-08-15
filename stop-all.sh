@@ -1,8 +1,8 @@
 #!/bin/bash
 
-# V4V Lightning Payment Tester - Stop Script
+# NWC Demo - Stop Script
 
-echo "🛑 Stopping V4V Lightning Payment Tester..."
+echo "🛑 Stopping NWC Demo..."
 
 # Read PIDs if available
 if [ -f /tmp/v4v-pids.txt ]; then

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# V4V Lightning Payment Tester - Complete Startup Script
+# NWC Demo - Complete Startup Script
 # This script starts all required services and configures webhooks
 
-echo "🚀 Starting V4V Lightning Payment Tester..."
+echo "🚀 Starting NWC Demo..."
 
 # Kill any existing processes
 echo "📍 Cleaning up existing processes..."

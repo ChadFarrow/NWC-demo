@@ -1,6 +1,6 @@
-# V4V Lightning Payment Tester
+# NWC Demo
 
-A comprehensive testing environment for Value for Value (V4V) Lightning Network payments with metaBoost integration and Nostr Wallet Connect (NWC) support.
+A comprehensive demo environment showcasing Nostr Wallet Connect (NWC) integration with Lightning Network payments, including metaBoost functionality and payment testing capabilities.
 
 ## 🚀 Features
 
