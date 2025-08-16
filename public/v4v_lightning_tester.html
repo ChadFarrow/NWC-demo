@@ -529,28 +529,6 @@
                 🔗 Connect Wallet
             </button>
             
-            <details style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: 8px;">
-                <summary style="cursor: pointer; color: var(--text-secondary); font-size: 0.9rem;">
-                    ⚙️ Advanced: Keysend Proxy Settings
-                </summary>
-                <div style="margin-top: 1rem;">
-                    <label class="form-label">Keysend Proxy URL (optional)</label>
-                    <input 
-                        type="url" 
-                        id="keysend-proxy-url"
-                        class="form-input" 
-                        placeholder="http://localhost:3334"
-                        style="margin-bottom: 0.5rem;"
-                    >
-                    <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
-                        If your wallet doesn't support keysend, you can use a proxy service like The Split Box
-                    </p>
-                    <button class="btn" onclick="saveProxySettings()" style="font-size: 0.9rem;">
-                        💾 Save Proxy Settings
-                    </button>
-                </div>
-            </details>
-            
             <div class="button-group" style="margin-top: 1rem;">
                 <button class="btn btn-info" onclick="debugNWCConnection()">
                     🔧 Debug NWC
@@ -1137,39 +1115,6 @@
             }
         }
 
-        function saveProxySettings() {
-            const proxyUrl = document.getElementById('keysend-proxy-url').value;
-            if (proxyUrl) {
-                localStorage.setItem('keysendProxyUrl', proxyUrl);
-                window.keysendProxyUrl = proxyUrl;
-                alert('✅ Proxy settings saved! Node payments will be routed through the proxy.');
-            } else {
-                localStorage.removeItem('keysendProxyUrl');
-                window.keysendProxyUrl = null;
-                alert('✅ Proxy settings cleared. Node payments will use direct keysend if supported.');
-            }
-        }
-        
-        // Load proxy settings on page load
-        window.addEventListener('DOMContentLoaded', function() {
-            // Default to The Split Box proxy
-            const DEFAULT_PROXY_URL = 'http://localhost:3334';
-            
-            // Check for saved proxy URL, otherwise use default
-            const savedProxy = localStorage.getItem('keysendProxyUrl');
-            const proxyUrl = savedProxy || DEFAULT_PROXY_URL;
-            
-            document.getElementById('keysend-proxy-url').value = proxyUrl;
-            window.keysendProxyUrl = proxyUrl;
-            
-            // If using default for first time, save it
-            if (!savedProxy) {
-                localStorage.setItem('keysendProxyUrl', DEFAULT_PROXY_URL);
-                console.log('🔄 Initialized with The Split Box proxy:', DEFAULT_PROXY_URL);
-            } else {
-                console.log('🔄 Loaded keysend proxy:', proxyUrl);
-            }
-        });
         
         function loadTestFeed() {
             const rssInput = document.querySelector('input[type="url"]');
@@ -1490,28 +1435,14 @@
                                     method: 'keysend'
                                 });
                             } else {
-                                // Wallet doesn't support keysend - try proxy if available
-                                const proxyUrl = window.keysendProxyUrl || localStorage.getItem('keysendProxyUrl');
-                                
-                                if (proxyUrl) {
-                                    console.log(`🔄 Using keysend proxy for ${recipient.title}`);
-                                    // Convert to proxy payment (implementation depends on proxy API)
-                                    paymentsToMake.push({
-                                        ...recipient,
-                                        address: recipient.address,
-                                        amount: splitAmount,
-                                        method: 'proxy',
-                                        proxyUrl: proxyUrl
-                                    });
-                                } else {
-                                    console.warn(`⚠️ Skipping node payment for ${recipient.title}: wallet doesn't support keysend`);
-                                    lightningAddressSkipped.push({
-                                        ...recipient,
-                                        amount: splitAmount,
-                                        method: 'keysend',
-                                        reason: 'Wallet does not support keysend (no proxy configured)'
-                                    });
-                                }
+                                // Wallet doesn't support keysend - use backend proxy transparently
+                                console.log(`🔄 Will use backend proxy for ${recipient.title}`);
+                                paymentsToMake.push({
+                                    ...recipient,
+                                    address: recipient.address,
+                                    amount: splitAmount,
+                                    method: 'proxy'
+                                });
                             }
                         } else if (recipient.type === 'lnaddress' && recipient.address.includes('@')) {
                             // Lightning address - try LNURL-pay
@@ -1581,35 +1512,38 @@
                             // Send keysend payment to node pubkey
                             result = await nwcjs.payKeysend_OLD(nwcInfo, payment.address, payment.amount, `${message} (${payment.split}% split to ${payment.title})`, 15);
                         } else if (payment.method === 'proxy') {
-                            // Handle proxy-routed keysend payment
-                            console.log(`🔄 Processing proxy payment to ${payment.title}`);
+                            // Handle transparent proxy-routed keysend payment
+                            console.log(`🔄 Routing keysend through backend proxy for ${payment.title}`);
                             
                             try {
-                                // Example: Split Box API
-                                // This would need to be adapted based on the specific proxy service
                                 const proxyRequest = {
                                     destination: payment.address,
                                     amount: payment.amount,
-                                    message: message
+                                    message: `${message} (${payment.split}% split to ${payment.title})`,
+                                    walletSupportsKeysend: false
                                 };
                                 
-                                // Get invoice from proxy service
-                                const proxyResponse = await fetch(payment.proxyUrl + '/api/createInvoice', {
+                                // Request proxy invoice from backend
+                                const proxyResponse = await fetch('/api/proxy/keysend', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify(proxyRequest)
                                 });
                                 
                                 if (!proxyResponse.ok) {
-                                    throw new Error('Proxy service unavailable');
+                                    const error = await proxyResponse.json();
+                                    throw new Error(error.error || 'Proxy service unavailable');
                                 }
                                 
-                                const { invoice } = await proxyResponse.json();
+                                const proxyData = await proxyResponse.json();
                                 
-                                // Pay the proxy invoice using regular Lightning payment
-                                result = await nwcjs.payInvoice(nwcInfo, invoice, 15);
-                                
-                                console.log(`✅ Proxy payment successful`);
+                                if (proxyData.method === 'proxy' && proxyData.invoice) {
+                                    // Pay the proxy invoice using regular Lightning payment
+                                    result = await nwcjs.payInvoice(nwcInfo, proxyData.invoice, 15);
+                                    console.log(`✅ Proxy payment routed successfully`);
+                                } else {
+                                    throw new Error('Invalid proxy response');
+                                }
                                 
                             } catch (proxyError) {
                                 console.error(`❌ Proxy payment failed:`, proxyError);
