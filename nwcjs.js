@@ -755,16 +755,29 @@ var nwcjs = {
     payKeysend_OLD: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
         console.log('🔧 Using nwcjs.payKeysend_OLD method');
         
+        // Validate destination before creating formats
+        if (!destination || destination.length === 0) {
+            throw new Error('Invalid destination: empty or null destination provided');
+        }
+        
         // Try different destination formats to work around the "invalid vertex length" issue
         var destinationFormats = [
             { name: 'original', value: destination, params: { destination: destination } },
             { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
             { name: 'pubkey', value: destination, params: { pubkey: destination } },
             { name: 'node_id', value: destination, params: { node_id: destination } },
-            // Add more specific formats for common cases
             { name: 'compressed_pubkey', value: destination.length === 66 ? destination : '02' + destination, params: { pubkey: destination.length === 66 ? destination : '02' + destination } },
             { name: 'uncompressed_pubkey', value: destination.length === 64 ? '02' + destination : destination, params: { destination: destination.length === 64 ? '02' + destination : destination } }
         ];
+        
+        // Validate all formats have non-empty destinations
+        destinationFormats = destinationFormats.filter(format => {
+            if (!format.value || format.value.length === 0) {
+                console.warn(`❌ Skipping ${format.name} format: empty destination`);
+                return false;
+            }
+            return true;
+        });
         
         console.log('Trying keysend with destination formats:', {
             original_length: destinationFormats[0].value.length,

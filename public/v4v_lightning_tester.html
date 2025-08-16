@@ -1363,6 +1363,13 @@
                         let result;
                         
                         if (payment.method === 'keysend') {
+                            // Validate keysend destination before sending
+                            if (!payment.address || payment.address.length === 0) {
+                                throw new Error(`Invalid keysend destination for ${payment.title}: empty address`);
+                            }
+                            
+                            console.log(`🔑 Sending keysend to ${payment.title}: ${payment.address.substring(0, 16)}...`);
+                            
                             // Send keysend payment to node pubkey
                             result = await nwcjs.payKeysend_OLD(nwcInfo, payment.address, payment.amount, `${message} (${payment.split}% split to ${payment.title})`, 15);
                         } else if (payment.method === 'lnurl') {
