@@ -597,6 +597,7 @@
     <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
     <script src="https://bundle.run/bech32@2.0.0"></script>
     <script src="./nwcjs.js"></script>
+    <script src="./nwc-bridge.js"></script>
 
     <script>
         // Debug script loading - updated
@@ -1254,38 +1255,24 @@
                     
                 } catch (directError) {
                     console.log('❌ Direct keysend failed:', directError.message);
-                    console.log('🔄 Trying backend proxy instead...');
+                    console.log('🔄 Using NWC Bridge for reliable payment...');
                     
-                    // Fall back to backend proxy
+                    // Use NWC Bridge which handles everything reliably on the backend
                     try {
-                        const proxyResponse = await fetch('/api/proxy/keysend', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                destination: testDestination,
-                                amount: testAmount,
-                                message: testMessage,
-                                walletSupportsKeysend: false
-                            })
-                        });
+                        // Initialize bridge with NWC connection
+                        nwcBridge.init(document.getElementById('nwcConnectionString').value);
                         
-                        if (!proxyResponse.ok) {
-                            const error = await proxyResponse.json();
-                            throw new Error(error.error || 'Proxy service failed');
-                        }
+                        // Send keysend (will automatically use proxy if needed)
+                        paymentResult = await nwcBridge.sendKeysend(
+                            testDestination,
+                            testAmount,
+                            testMessage
+                        );
                         
-                        const proxyData = await proxyResponse.json();
+                        console.log('✅ Payment completed via NWC Bridge!', paymentResult);
                         
-                        if (proxyData.method === 'proxy' && proxyData.invoice) {
-                            console.log('🔄 Paying proxy invoice...');
-                            paymentResult = await nwcjs.payInvoice(nwcInfo, proxyData.invoice, 10);
-                            console.log('✅ Proxy payment completed!');
-                        } else {
-                            throw new Error('Invalid proxy response');
-                        }
-                        
-                    } catch (proxyError) {
-                        throw new Error(`Both direct keysend and proxy failed: ${proxyError.message}`);
+                    } catch (bridgeError) {
+                        throw new Error(`Payment failed: ${bridgeError.message}`);
                     }
                 }
                 
@@ -1559,41 +1546,45 @@
                             
                             console.log(`🔑 Sending keysend to ${payment.title}: ${payment.address.substring(0, 16)}...`);
                             
-                            // Send keysend payment to node pubkey
-                            result = await nwcjs.payKeysend_OLD(nwcInfo, payment.address, payment.amount, `${message} (${payment.split}% split to ${payment.title})`, 15);
+                            // Try direct keysend with timeout
+                            try {
+                                const keysendPromise = nwcjs.payKeysend_OLD(nwcInfo, payment.address, payment.amount, `${message} (${payment.split}% split to ${payment.title})`, 5);
+                                const timeoutPromise = new Promise((_, reject) => 
+                                    setTimeout(() => reject(new Error('Keysend timeout')), 5000)
+                                );
+                                result = await Promise.race([keysendPromise, timeoutPromise]);
+                            } catch (keysendError) {
+                                console.log(`⚠️ Direct keysend failed, using NWC Bridge...`);
+                                
+                                // Fallback to NWC Bridge which handles everything reliably
+                                if (!nwcBridge.connectionString) {
+                                    nwcBridge.init(document.getElementById('nwcConnectionString').value);
+                                }
+                                
+                                result = await nwcBridge.sendKeysend(
+                                    payment.address,
+                                    payment.amount,
+                                    `${message} (${payment.split}% split to ${payment.title})`
+                                );
+                            }
                         } else if (payment.method === 'proxy') {
-                            // Handle transparent proxy-routed keysend payment
+                            // Handle transparent proxy-routed keysend payment using NWC Bridge
                             console.log(`🔄 Routing keysend through backend proxy for ${payment.title}`);
                             
                             try {
-                                const proxyRequest = {
-                                    destination: payment.address,
-                                    amount: payment.amount,
-                                    message: `${message} (${payment.split}% split to ${payment.title})`,
-                                    walletSupportsKeysend: false
-                                };
-                                
-                                // Request proxy invoice from backend
-                                const proxyResponse = await fetch('/api/proxy/keysend', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(proxyRequest)
-                                });
-                                
-                                if (!proxyResponse.ok) {
-                                    const error = await proxyResponse.json();
-                                    throw new Error(error.error || 'Proxy service unavailable');
+                                // Initialize NWC Bridge if not already done
+                                if (!nwcBridge.connectionString) {
+                                    nwcBridge.init(document.getElementById('nwcConnectionString').value);
                                 }
                                 
-                                const proxyData = await proxyResponse.json();
+                                // Use NWC Bridge which handles proxy automatically
+                                result = await nwcBridge.sendKeysend(
+                                    payment.address,
+                                    payment.amount,
+                                    `${message} (${payment.split}% split to ${payment.title})`
+                                );
                                 
-                                if (proxyData.method === 'proxy' && proxyData.invoice) {
-                                    // Pay the proxy invoice using regular Lightning payment
-                                    result = await nwcjs.payInvoice(nwcInfo, proxyData.invoice, 15);
-                                    console.log(`✅ Proxy payment routed successfully`);
-                                } else {
-                                    throw new Error('Invalid proxy response');
-                                }
+                                console.log(`✅ Proxy payment routed successfully via NWC Bridge`);
                                 
                             } catch (proxyError) {
                                 console.error(`❌ Proxy payment failed:`, proxyError);

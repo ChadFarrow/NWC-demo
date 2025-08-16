@@ -1,6 +1,7 @@
 // NWC Demo Server with Integrated Split Box Proxy
 // Serves the frontend and transparently handles keysend proxy routing
 
+require('websocket-polyfill'); // Required for Alby SDK
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -81,12 +82,20 @@ app.post('/api/proxy/keysend', async (req, res) => {
         
         let invoice;
         try {
-            invoice = await Promise.race([
-                nwcClient.makeInvoice(amount, description),
-                new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('NWC invoice creation timeout after 10 seconds')), 10000)
-                )
-            ]);
+            // Use Alby SDK directly instead of our wrapper
+            const { NWCClient } = await import('@getalby/sdk');
+            const directNWC = new NWCClient({ 
+                nostrWalletConnectUrl: process.env.NWC_CONNECTION_STRING 
+            });
+            
+            const result = await directNWC.makeInvoice({
+                amount: amount * 1000, // Convert to millisats
+                description
+            });
+            
+            invoice = result.invoice;
+            console.log(`✅ Invoice created successfully`);
+            
         } catch (nwcError) {
             console.error(`❌ NWC invoice creation failed:`, nwcError.message);
             throw new Error(`Failed to create invoice via AlbyHub: ${nwcError.message}`);
@@ -133,6 +142,9 @@ async function monitorAndForward(invoice) {
     if (!data) return;
     
     console.log(`👀 Monitoring proxy invoice...`);
+    console.log(`   Invoice: ${invoice.substring(0, 50)}...`);
+    console.log(`   Destination: ${data.destination}`);
+    console.log(`   Amount: ${data.amount} sats`);
     
     let attempts = 0;
     const maxAttempts = 150; // 5 minutes
@@ -140,28 +152,67 @@ async function monitorAndForward(invoice) {
     const checkInterval = setInterval(async () => {
         attempts++;
         
+        if (attempts % 10 === 1) {  // Log every 10 attempts
+            console.log(`🔍 Check attempt ${attempts}/${maxAttempts}...`);
+        }
+        
         try {
-            const invoiceStatus = await nwcClient.lookupInvoice(invoice);
+            // Use Alby SDK directly for invoice lookup
+            const { NWCClient } = await import('@getalby/sdk');
+            const directNWC = new NWCClient({ 
+                nostrWalletConnectUrl: process.env.NWC_CONNECTION_STRING 
+            });
             
-            if (invoiceStatus && invoiceStatus.settled) {
+            const invoiceStatus = await directNWC.lookupInvoice({ invoice });
+            
+            if (invoiceStatus) {
+                console.log(`📊 Invoice status:`, {
+                    settled: invoiceStatus.settled,
+                    state: invoiceStatus.state,
+                    paid: invoiceStatus.paid,
+                    status_type: typeof invoiceStatus.settled
+                });
+            }
+            
+            // Check multiple possible fields for payment status
+            const isPaid = invoiceStatus && (
+                invoiceStatus.settled === true || 
+                invoiceStatus.settled === 'true' ||
+                invoiceStatus.state === 'SETTLED' ||
+                invoiceStatus.state === 'settled' ||  // Add lowercase check
+                invoiceStatus.paid === true ||
+                invoiceStatus.paid === 'true'
+            );
+            
+            if (isPaid) {
                 clearInterval(checkInterval);
                 
-                console.log(`💰 Invoice paid! Forwarding keysend...`);
+                console.log(`💰 Invoice PAID! Forwarding keysend now...`);
                 data.status = 'processing';
                 
                 try {
-                    const result = await nwcClient.payKeysend(
-                        data.destination,
-                        data.amount,
-                        data.message || ''
-                    );
+                    // Use Alby SDK directly for keysend
+                    const { NWCClient } = await import('@getalby/sdk');
+                    const directNWC = new NWCClient({ 
+                        nostrWalletConnectUrl: process.env.NWC_CONNECTION_STRING 
+                    });
+                    
+                    const result = await directNWC.payKeysend({
+                        pubkey: data.destination,
+                        amount: data.amount * 1000, // Convert to millisats
+                        tlv_records: data.message ? [{
+                            type: 34349334, // Standard message TLV record type
+                            value: Buffer.from(data.message, 'utf8').toString('hex')
+                        }] : []
+                    });
                     
                     console.log(`✅ Keysend forwarded successfully!`);
+                    console.log(`   Payment hash: ${result.payment_hash || 'N/A'}`);
                     data.status = 'completed';
                     data.paymentHash = result.payment_hash;
                     
                 } catch (keysendError) {
-                    console.error(`❌ Keysend forward failed:`, keysendError.message);
+                    console.error(`❌ Keysend forward failed:`, keysendError);
                     data.status = 'failed';
                     data.error = keysendError.message;
                 }
@@ -171,13 +222,13 @@ async function monitorAndForward(invoice) {
             
             if (attempts >= maxAttempts) {
                 clearInterval(checkInterval);
-                console.log(`⏱️  Invoice expired`);
+                console.log(`⏱️  Invoice expired after ${attempts} checks`);
                 data.status = 'expired';
                 invoiceMap.set(invoice, data);
             }
             
         } catch (error) {
-            console.error('Error checking invoice:', error.message);
+            console.error('❌ Error checking invoice:', error);
         }
     }, 2000);
     
@@ -186,6 +237,135 @@ async function monitorAndForward(invoice) {
         invoiceMap.delete(invoice);
     }, 60 * 60 * 1000);
 }
+
+// NWC Bridge API endpoints using Alby SDK
+app.post('/api/nwc/pay-invoice', async (req, res) => {
+    try {
+        const { nwc_string, invoice } = req.body;
+        
+        if (!nwc_string || !invoice) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required parameters'
+            });
+        }
+        
+        // Import Alby SDK dynamically
+        const { NostrWebLNProvider } = await import('@getalby/sdk');
+        
+        // Create NWC provider
+        const nwc = new NostrWebLNProvider({ 
+            nostrWalletConnectUrl: nwc_string 
+        });
+        
+        await nwc.enable();
+        
+        // Pay invoice
+        const result = await nwc.sendPayment(invoice);
+        
+        nwc.close();
+        
+        res.json({
+            success: true,
+            payment_hash: result.payment_hash,
+            preimage: result.preimage
+        });
+        
+    } catch (error) {
+        console.error('❌ NWC pay invoice error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
+
+app.post('/api/nwc/keysend', async (req, res) => {
+    try {
+        const { nwc_string, destination, amount, message } = req.body;
+        
+        if (!nwc_string || !destination || !amount) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing required parameters'
+            });
+        }
+        
+        // Import Alby SDK dynamically
+        const { NostrWebLNProvider } = await import('@getalby/sdk');
+        
+        // Create NWC provider
+        const nwc = new NostrWebLNProvider({ 
+            nostrWalletConnectUrl: nwc_string 
+        });
+        
+        await nwc.enable();
+        
+        // Try keysend
+        const result = await nwc.keysend({
+            destination: destination,
+            amount: amount * 1000, // Convert to millisats
+            customRecords: message ? { '34349334': message } : {}
+        });
+        
+        nwc.close();
+        
+        res.json({
+            success: true,
+            payment_hash: result.payment_hash,
+            preimage: result.preimage
+        });
+        
+    } catch (error) {
+        console.error('❌ NWC keysend error:', error);
+        // Return error but don't fail - let client fall back to proxy
+        res.json({
+            success: false,
+            error: error.message,
+            keysend_supported: false
+        });
+    }
+});
+
+app.post('/api/nwc/info', async (req, res) => {
+    try {
+        const { nwc_string } = req.body;
+        
+        if (!nwc_string) {
+            return res.status(400).json({
+                success: false,
+                error: 'Missing NWC connection string'
+            });
+        }
+        
+        // Import Alby SDK dynamically
+        const { NostrWebLNProvider } = await import('@getalby/sdk');
+        
+        // Create NWC provider
+        const nwc = new NostrWebLNProvider({ 
+            nostrWalletConnectUrl: nwc_string 
+        });
+        
+        await nwc.enable();
+        
+        // Get wallet info
+        const info = await nwc.getInfo();
+        
+        nwc.close();
+        
+        res.json({
+            success: true,
+            ...info
+        });
+        
+    } catch (error) {
+        console.error('❌ NWC info error:', error);
+        res.status(500).json({
+            success: false,
+            error: error.message
+        });
+    }
+});
 
 // Check proxy payment status
 app.get('/api/proxy/status/:trackingId', (req, res) => {

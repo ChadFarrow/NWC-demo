@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NWC Bridge Test</title>
+    <style>
+        body { font-family: monospace; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        button { padding: 10px 20px; margin: 10px 0; cursor: pointer; }
+        .result { margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        input { width: 100%; padding: 8px; margin: 5px 0; box-sizing: border-box; font-family: monospace; }
+    </style>
+    <script src="/nwc-bridge.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>NWC Bridge Test</h1>
+        <p>This uses the Alby SDK on the backend to handle all NWC operations reliably.</p>
+        
+        <div>
+            <label>NWC Connection String:</label>
+            <input type="text" id="nwcString" placeholder="nostr+walletconnect://..." />
+        </div>
+        
+        <button onclick="testWalletInfo()">Test Wallet Info</button>
+        
+        <hr>
+        
+        <div>
+            <label>Test Node Pubkey:</label>
+            <input type="text" id="testPubkey" value="032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51" />
+        </div>
+        
+        <div>
+            <label>Amount (sats):</label>
+            <input type="number" id="amount" value="1" />
+        </div>
+        
+        <button onclick="testKeysend()">Test Keysend (Direct or Proxy)</button>
+        
+        <div id="result"></div>
+    </div>
+
+    <script>
+        async function testWalletInfo() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing wallet connection...';
+            
+            try {
+                const nwcString = document.getElementById('nwcString').value;
+                if (!nwcString) {
+                    throw new Error('Please enter NWC connection string');
+                }
+                
+                // Initialize bridge
+                nwcBridge.init(nwcString);
+                
+                // Get wallet info
+                const info = await nwcBridge.getInfo();
+                
+                resultDiv.innerHTML = `<div class="result success">
+                    ✅ Wallet connected!<br>
+                    Node: ${info.node?.alias || 'Unknown'}<br>
+                    Pubkey: ${info.node?.pubkey?.substring(0, 20) || 'N/A'}...<br>
+                    Methods: ${info.methods?.join(', ') || 'N/A'}
+                </div>`;
+                
+            } catch (error) {
+                console.error('Info error:', error);
+                resultDiv.innerHTML = `<div class="result error">
+                    ❌ Failed to get wallet info: ${error.message}
+                </div>`;
+            }
+        }
+        
+        async function testKeysend() {
+            const resultDiv = document.getElementById('result');
+            resultDiv.innerHTML = 'Testing keysend...';
+            
+            try {
+                const nwcString = document.getElementById('nwcString').value;
+                const pubkey = document.getElementById('testPubkey').value;
+                const amount = parseInt(document.getElementById('amount').value);
+                
+                if (!nwcString) {
+                    throw new Error('Please enter NWC connection string');
+                }
+                
+                // Initialize bridge
+                nwcBridge.init(nwcString);
+                
+                // Send keysend (will automatically use proxy if needed)
+                const result = await nwcBridge.sendKeysend(
+                    pubkey,
+                    amount,
+                    'Test keysend via NWC Bridge'
+                );
+                
+                resultDiv.innerHTML = `<div class="result success">
+                    ✅ Keysend successful!<br>
+                    Method: ${result.method || 'direct'}<br>
+                    Payment hash: ${result.payment_hash?.substring(0, 20) || 'N/A'}...<br>
+                    Preimage: ${result.preimage?.substring(0, 20) || 'N/A'}...
+                    ${result.tracking_id ? `<br>Tracking ID: ${result.tracking_id}` : ''}
+                </div>`;
+                
+                // If proxy was used, check status after a few seconds
+                if (result.method === 'proxy' && result.tracking_id) {
+                    setTimeout(async () => {
+                        const statusResponse = await fetch(`/api/proxy/status/${result.tracking_id}`);
+                        const status = await statusResponse.json();
+                        
+                        resultDiv.innerHTML += `<div class="result">
+                            Proxy status: ${status.status}<br>
+                            ${status.status === 'completed' ? '✅ Keysend forwarded successfully!' : '⏳ Still processing...'}
+                        </div>`;
+                    }, 3000);
+                }
+                
+            } catch (error) {
+                console.error('Keysend error:', error);
+                resultDiv.innerHTML = `<div class="result error">
+                    ❌ Keysend failed: ${error.message}
+                </div>`;
+            }
+        }
+    </script>
+</body>
+</html>
