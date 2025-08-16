@@ -752,6 +752,9 @@ var nwcjs = {
         
         return await loop();
     },
+    // Remember successful format for future payments
+    lastWorkingKeysendFormat: null,
+    
     payKeysend_OLD: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
         console.log('🔧 Using nwcjs.payKeysend_OLD method');
         
@@ -760,15 +763,31 @@ var nwcjs = {
             throw new Error('Invalid destination: empty or null destination provided');
         }
         
-        // Try different destination formats to work around the "invalid vertex length" issue
-        var destinationFormats = [
-            { name: 'original', value: destination, params: { destination: destination } },
-            { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
+        // Create all possible destination formats
+        var allFormats = [
             { name: 'pubkey', value: destination, params: { pubkey: destination } },
             { name: 'node_id', value: destination, params: { node_id: destination } },
             { name: 'compressed_pubkey', value: destination.length === 66 ? destination : '02' + destination, params: { pubkey: destination.length === 66 ? destination : '02' + destination } },
+            { name: 'original', value: destination, params: { destination: destination } },
+            { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
             { name: 'uncompressed_pubkey', value: destination.length === 64 ? '02' + destination : destination, params: { destination: destination.length === 64 ? '02' + destination : destination } }
         ];
+        
+        // If we know a format that worked before, try it first
+        var destinationFormats = [];
+        if (nwcjs.lastWorkingKeysendFormat) {
+            const workingFormat = allFormats.find(f => f.name === nwcjs.lastWorkingKeysendFormat);
+            if (workingFormat) {
+                console.log(`🎯 Trying last working format first: ${nwcjs.lastWorkingKeysendFormat}`);
+                destinationFormats.push(workingFormat);
+                // Add remaining formats
+                destinationFormats.push(...allFormats.filter(f => f.name !== nwcjs.lastWorkingKeysendFormat));
+            } else {
+                destinationFormats = allFormats;
+            }
+        } else {
+            destinationFormats = allFormats;
+        }
         
         // Validate all formats have non-empty destinations
         destinationFormats = destinationFormats.filter(format => {
@@ -862,6 +881,9 @@ var nwcjs = {
                     continue;
                 } else if (result && result.result) {
                     console.log(`✅ Keysend successful with format: ${format.name}`);
+                    // Remember this format for future payments
+                    nwcjs.lastWorkingKeysendFormat = format.name;
+                    console.log(`💾 Saved working format: ${format.name}`);
                     return result;
                 } else {
                     const errorMsg = `Format ${format.name}: Unexpected response format - ${JSON.stringify(result)}`;
