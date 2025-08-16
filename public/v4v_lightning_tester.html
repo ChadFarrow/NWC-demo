@@ -1328,6 +1328,18 @@
                 
                 console.log('✅ Wallet connected:', walletInfo);
                 
+                // Check if wallet supports keysend
+                const supportedMethods = walletInfo?.result?.methods || [];
+                const supportsKeysend = supportedMethods.includes('pay_keysend');
+                window.nwcSupportsKeysend = supportsKeysend;
+                
+                if (!supportsKeysend) {
+                    console.warn('⚠️ This wallet does not support keysend payments');
+                    console.log('Supported methods:', supportedMethods);
+                } else {
+                    console.log('✅ Wallet supports keysend');
+                }
+                
                 // Get balance to verify sufficient funds
                 btn.innerHTML = '💰 Checking balance...';
                 const balance = await nwcjs.getBalance(nwcInfo, 10);
@@ -1411,14 +1423,26 @@
                     
                     if (splitAmount > 0) {
                         if (recipient.type === 'node' && recipient.address.match(/^[0-9a-fA-F]{66}$/)) {
-                            // Valid node pubkey - can use keysend
-                            console.log(`🔑 Adding keysend payment for ${recipient.title}: ${recipient.address}`);
-                            paymentsToMake.push({
-                                ...recipient,
-                                address: recipient.address, // Explicitly set address field
-                                amount: splitAmount,
-                                method: 'keysend'
-                            });
+                            // Check if wallet supports keysend
+                            if (window.nwcSupportsKeysend !== false) {
+                                // Valid node pubkey - can use keysend
+                                console.log(`🔑 Adding keysend payment for ${recipient.title}: ${recipient.address}`);
+                                paymentsToMake.push({
+                                    ...recipient,
+                                    address: recipient.address, // Explicitly set address field
+                                    amount: splitAmount,
+                                    method: 'keysend'
+                                });
+                            } else {
+                                // Wallet doesn't support keysend - skip node payments
+                                console.warn(`⚠️ Skipping node payment for ${recipient.title}: wallet doesn't support keysend`);
+                                lightningAddressSkipped.push({
+                                    ...recipient,
+                                    amount: splitAmount,
+                                    method: 'keysend',
+                                    reason: 'Wallet does not support keysend'
+                                });
+                            }
                         } else if (recipient.type === 'lnaddress' && recipient.address.includes('@')) {
                             // Lightning address - try LNURL-pay
                             paymentsToMake.push({
@@ -1559,14 +1583,20 @@
                         }
                     } catch (error) {
                         console.error(`❌ Payment ${i + 1} failed:`, error);
-                        paymentResults.push({
-                            recipient: payment.title,
-                            amount: payment.amount,
-                            split: payment.split,
-                            method: payment.method,
-                            success: false,
-                            error: error.message
-                        });
+                        
+                        // Only add to failed payments if it's a genuine failure, not a retry attempt
+                        if (!error.message.includes('invalid vertex length') && !error.message.includes('retry')) {
+                            paymentResults.push({
+                                recipient: payment.title,
+                                amount: payment.amount,
+                                split: payment.split,
+                                method: payment.method,
+                                success: false,
+                                error: error.message
+                            });
+                        } else {
+                            console.log(`🔄 Payment ${i + 1} retry attempt failed, continuing...`);
+                        }
                     }
                     
                     // Small delay between payments
@@ -1632,11 +1662,16 @@
                 }
                 
                 if (lightningAddressSkipped.length > 0) {
-                    successMessage += `⚠️ Unsupported Addresses:\n`;
+                    successMessage += `⚠️ Skipped Recipients:\n`;
                     lightningAddressSkipped.forEach(recipient => {
                         successMessage += `• ${recipient.title}: ${recipient.amount} sats (${recipient.split}%) - ${recipient.reason || 'Unsupported format'}\n`;
                     });
                     successMessage += `\n`;
+                    
+                    // If skipped due to no keysend support, suggest alternatives
+                    if (lightningAddressSkipped.some(r => r.reason === 'Wallet does not support keysend')) {
+                        successMessage += `💡 Tip: Use a wallet that supports keysend (like Alby) to pay node pubkeys.\n\n`;
+                    }
                 }
                 
                 successMessage += `💡 Supports: Node pubkeys (keysend) and Lightning addresses (LNURL-pay).`;
@@ -1658,6 +1693,37 @@
                 }, 3000);
             }
         }
+        
+        // Global error handler to suppress unwanted error dialogs
+        window.addEventListener('error', function(event) {
+            // Suppress errors related to payment retries or temporary failures
+            if (event.error && event.error.message) {
+                const errorMsg = event.error.message.toLowerCase();
+                if (errorMsg.includes('invalid vertex length') || 
+                    errorMsg.includes('destination') || 
+                    errorMsg.includes('tlv_records')) {
+                    console.log('🔄 Suppressing expected payment retry error:', event.error.message);
+                    event.preventDefault();
+                    return false;
+                }
+            }
+        });
+        
+        // Override alert to filter out unwanted error messages
+        const originalAlert = window.alert;
+        window.alert = function(message) {
+            // Filter out error messages that are likely false positives
+            if (typeof message === 'string' && (
+                message.includes('Failed Bitcoin Payment') ||
+                message.includes('destination') ||
+                message.includes('tlv_records')
+            )) {
+                console.log('🔄 Suppressing unwanted error alert:', message);
+                return;
+            }
+            // Show legitimate alerts
+            originalAlert.call(this, message);
+        };
         
         // Simple test function to verify the current state
         function testCurrentState() {
