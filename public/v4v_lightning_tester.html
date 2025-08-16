@@ -1389,6 +1389,26 @@
                                 
                                 console.log(`📄 Invoice payment result:`, result);
                                 
+                                // Check for zap receipt if payment was successful
+                                if (result && result.result && !result.error) {
+                                    console.log(`🧾 Checking for zap receipt...`);
+                                    try {
+                                        // Wait a moment for the zap receipt to be published
+                                        await new Promise(resolve => setTimeout(resolve, 2000));
+                                        
+                                        const zapReceipt = await nwcjs.checkZapStatus(invoice, checkingId);
+                                        if (zapReceipt && zapReceipt !== "not paid yet") {
+                                            console.log(`✅ Zap receipt found:`, zapReceipt);
+                                            result.zap_receipt = zapReceipt;
+                                        } else {
+                                            console.log(`⚠️ No zap receipt found (payment may still be valid)`);
+                                        }
+                                    } catch (receiptError) {
+                                        console.log(`⚠️ Could not verify zap receipt:`, receiptError.message);
+                                        // Don't fail the payment just because receipt check failed
+                                    }
+                                }
+                                
                             } catch (invoiceError) {
                                 console.error(`❌ Lightning address payment failed:`, invoiceError);
                                 throw new Error(`Lightning address payment failed: ${invoiceError.message}`);
@@ -1475,6 +1495,9 @@
                     successfulPayments.forEach(payment => {
                         successMessage += `• ${payment.recipient}: ${payment.amount} sats (${payment.split}%)\n`;
                         successMessage += `  Hash: ${payment.hash?.substring(0, 16)}...\n`;
+                        if (payment.method === 'lnurl' && payment.result?.zap_receipt) {
+                            successMessage += `  Zap Receipt: ${payment.result.zap_receipt.id?.substring(0, 16)}...\n`;
+                        }
                     });
                     successMessage += `\n`;
                 }
