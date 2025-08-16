@@ -1310,8 +1310,10 @@
                     if (splitAmount > 0) {
                         if (recipient.type === 'node' && recipient.address.match(/^[0-9a-fA-F]{66}$/)) {
                             // Valid node pubkey - can use keysend
+                            console.log(`🔑 Adding keysend payment for ${recipient.title}: ${recipient.address}`);
                             paymentsToMake.push({
                                 ...recipient,
+                                address: recipient.address, // Explicitly set address field
                                 amount: splitAmount,
                                 method: 'keysend'
                             });
@@ -1363,6 +1365,16 @@
                         let result;
                         
                         if (payment.method === 'keysend') {
+                            // Debug: show full payment object
+                            console.log(`🔍 Debug keysend payment object:`, {
+                                title: payment.title,
+                                address: payment.address,
+                                amount: payment.amount,
+                                split: payment.split,
+                                method: payment.method,
+                                all_keys: Object.keys(payment)
+                            });
+                            
                             // Validate keysend destination before sending
                             if (!payment.address || payment.address.length === 0) {
                                 throw new Error(`Invalid keysend destination for ${payment.title}: empty address`);
