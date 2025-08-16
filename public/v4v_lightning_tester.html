@@ -772,15 +772,88 @@
                     }
                 });
                 
+                // NEW: Check for old MetaBoost format as additional fallback
                 if (valueBlocks.length === 0) {
-                    // If no value blocks found, create a test one
-                    console.log('⚠️ No value blocks found, creating test data');
-                    valueBlocks.push({
-                        title: 'Test Episode',
-                        value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
-                        description: 'Test episode for development',
-                        guid: 'test-episode-1'
+                    console.log('🔍 No modern value blocks found, checking for old MetaBoost format...');
+                    
+                    // Look for metaBoost endpoints in the feed
+                    const metaBoostEndpoints = xmlDoc.querySelectorAll('metaBoost, podcast\\:metaBoost');
+                    console.log('🔍 Found MetaBoost endpoints:', metaBoostEndpoints.length);
+                    
+                    if (metaBoostEndpoints.length > 0) {
+                        metaBoostEndpoints.forEach((endpoint, index) => {
+                            const endpointUrl = endpoint.textContent?.trim() || endpoint.getAttribute('url') || '';
+                            if (endpointUrl) {
+                                console.log(`📡 MetaBoost endpoint ${index + 1}: ${endpointUrl}`);
+                                
+                                // Create a test recipient for the MetaBoost endpoint
+                                valueBlocks.push({
+                                    title: `MetaBoost Endpoint ${index + 1}`,
+                                    value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619', // Test pubkey
+                                    description: `MetaBoost endpoint: ${endpointUrl}`,
+                                    guid: `metaboost-${index}`,
+                                    type: 'metaboost',
+                                    group: 'metaboost',
+                                    groupTitle: 'MetaBoost Endpoints'
+                                });
+                            }
+                        });
+                    }
+                    
+                    // Also check for any Lightning addresses or pubkeys in the feed content
+                    const feedText = xmlText.toLowerCase();
+                    const lightningPatterns = [
+                        /(02[a-f0-9]{64})/g,  // Compressed pubkey
+                        /(03[a-f0-9]{64})/g,  // Compressed pubkey
+                        /(04[a-f0-9]{128})/g, // Uncompressed pubkey
+                        /([a-f0-9]{64})/g     // Any 64-char hex (might be pubkey)
+                    ];
+                    
+                    lightningPatterns.forEach((pattern, patternIndex) => {
+                        const matches = feedText.match(pattern);
+                        if (matches) {
+                            console.log(`🔍 Found Lightning pattern ${patternIndex + 1}:`, matches.length, 'matches');
+                            matches.forEach((match, matchIndex) => {
+                                // Only add if it looks like a valid pubkey and we don't have too many
+                                if (valueBlocks.length < 10 && match.length >= 64) {
+                                    valueBlocks.push({
+                                        title: `Lightning Node ${patternIndex + 1}-${matchIndex + 1}`,
+                                        value: match,
+                                        description: `Extracted from feed content (pattern ${patternIndex + 1})`,
+                                        guid: `lightning-${patternIndex}-${matchIndex}`,
+                                        type: 'extracted',
+                                        group: 'extracted',
+                                        groupTitle: 'Extracted Lightning Addresses'
+                                    });
+                                }
+                            });
+                        }
                     });
+                }
+                
+                if (valueBlocks.length === 0) {
+                    // If no value blocks found, create test data with real Lightning pubkeys
+                    console.log('⚠️ No value blocks found, creating test data');
+                    valueBlocks.push(
+                        {
+                            title: 'Test Lightning Node 1',
+                            value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
+                            description: 'Test Lightning node for development (compressed pubkey)',
+                            guid: 'test-node-1',
+                            type: 'test',
+                            group: 'test',
+                            groupTitle: 'Test Nodes'
+                        },
+                        {
+                            title: 'Test Lightning Node 2',
+                            value: '03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7',
+                            description: 'Test Lightning node for development (compressed pubkey)',
+                            guid: 'test-node-2',
+                            type: 'test',
+                            group: 'test',
+                            groupTitle: 'Test Nodes'
+                        }
+                    );
                 }
                 
                 window.parsedValueBlocks = valueBlocks;
@@ -804,12 +877,26 @@
                 
                 // Create fallback test data if parsing fails
                 console.log('🔄 Creating fallback test data...');
-                const fallbackBlocks = [{
-                    title: 'Fallback Test Episode',
-                    value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
-                    description: 'Fallback episode for testing when RSS fails',
-                    guid: 'fallback-episode-1'
-                }];
+                const fallbackBlocks = [
+                    {
+                        title: 'Fallback Test Node 1',
+                        value: '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619',
+                        description: 'Fallback Lightning node for testing when RSS fails',
+                        guid: 'fallback-node-1',
+                        type: 'fallback',
+                        group: 'fallback',
+                        groupTitle: 'Fallback Test Nodes'
+                    },
+                    {
+                        title: 'Fallback Test Node 2',
+                        value: '03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7',
+                        description: 'Fallback Lightning node for testing when RSS fails',
+                        guid: 'fallback-node-2',
+                        type: 'fallback',
+                        group: 'fallback',
+                        groupTitle: 'Fallback Test Nodes'
+                    }
+                ];
                 
                 window.parsedValueBlocks = fallbackBlocks;
                 updateValueBlockDisplay(fallbackBlocks);
