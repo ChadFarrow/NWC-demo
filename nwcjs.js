@@ -706,6 +706,52 @@ var nwcjs = {
             throw error;
         }
     },
+    payInvoice: async ( nwc_info, invoice, seconds_of_delay_tolerable = 15 ) => {
+        console.log('🔧 Using nwcjs.payInvoice method');
+        
+        var msg = JSON.stringify({
+            method: "pay_invoice",
+            params: {
+                invoice: invoice
+            }
+        });
+        
+        var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
+        var obj = {
+            kind: 23194,
+            content: emsg,
+            tags: [ [ "p", nwc_info[ "wallet_pubkey" ] ] ],
+            created_at: Math.floor( Date.now() / 1000 ),
+            pubkey: nwc_info[ "app_pubkey" ],
+        }
+        var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
+        var id = event.id;
+        nwcjs.getResponse( nwc_info, id, "pay_invoice", seconds_of_delay_tolerable );
+        await nwcjs.waitSomeSeconds( 1 );
+        var relay = nwc_info[ "relay" ];
+        nwcjs.sendEvent( event, relay );
+        
+        var loop = async () => {
+            await nwcjs.waitSomeSeconds( 1 );
+            if ( !nwcjs.response.length ) return await loop();
+            var one_i_want = null;
+            nwcjs.response.every( ( item, index ) => {
+                if ( item[ "result_type" ] === "pay_invoice" ) {
+                    one_i_want = item;
+                    nwcjs.response.splice( index, 1 );
+                    return;
+                }
+                return true;
+            });
+            if ( one_i_want ) {
+                console.log(`pay_invoice response:`, one_i_want);
+                return one_i_want;
+            }
+            return await loop();
+        }
+        
+        return await loop();
+    },
     payKeysend_OLD: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
         console.log('🔧 Using nwcjs.payKeysend_OLD method');
         

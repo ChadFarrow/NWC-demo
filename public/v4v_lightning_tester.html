@@ -1384,20 +1384,10 @@
                                 // Let's try a simpler approach - just use the tryToPayInvoice but with error handling
                                 console.log(`💳 Attempting to pay invoice...`);
                                 
-                                // Pay invoice without amount parameter (amount is in the invoice)
-                                await nwcjs.tryToPayInvoice(nwcInfo, invoice);
+                                // Use proper payInvoice method that waits for response
+                                result = await nwcjs.payInvoice(nwcInfo, invoice, 15);
                                 
-                                // Since tryToPayInvoice doesn't return a result, we'll simulate success
-                                // In a real implementation, you'd need to check payment status separately
-                                console.log(`⏳ Payment sent - simulating success for demo purposes`);
-                                
-                                result = {
-                                    result_type: 'pay_invoice',
-                                    result: {
-                                        payment_hash: `simulated_${Date.now()}`,
-                                        preimage: null
-                                    }
-                                };
+                                console.log(`📄 Invoice payment result:`, result);
                                 
                             } catch (invoiceError) {
                                 console.error(`❌ Lightning address payment failed:`, invoiceError);
