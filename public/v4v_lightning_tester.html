@@ -596,8 +596,24 @@
     <!-- NWC Dependencies -->
     <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
     <script src="https://bundle.run/bech32@2.0.0"></script>
-    <script src="nwcjs.js"></script>
+    <script src="./nwcjs.js"></script>
 
+    <script>
+        // Debug script loading
+        window.addEventListener('DOMContentLoaded', function() {
+            console.log('DOMContentLoaded - nwcjs available:', typeof nwcjs !== 'undefined');
+            if (typeof nwcjs === 'undefined') {
+                console.error('❌ nwcjs is not defined! Check script loading.');
+                // Try to load it again
+                const script = document.createElement('script');
+                script.src = './nwcjs.js';
+                script.onload = () => console.log('✅ nwcjs reloaded successfully');
+                script.onerror = () => console.error('❌ Failed to reload nwcjs');
+                document.head.appendChild(script);
+            }
+        });
+    </script>
+    
     <script>
         function toggleTheme() {
             const toggle = document.querySelector('.theme-toggle');
