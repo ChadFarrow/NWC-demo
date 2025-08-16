@@ -1231,13 +1231,63 @@
                 
                 // Test with a minimal amount (1 sat)
                 const testAmount = 1;
-                const testDestination = '02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619';
+                const testDestination = '032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51';
                 const testMessage = 'Test keysend from V4V Lightning Tester';
                 
                 btn.innerHTML = '🔑 Sending test...';
                 console.log('🧪 Testing keysend with:', { amount: testAmount, destination: testDestination, message: testMessage });
+                console.log('🔍 nwcjs available:', typeof nwcjs);
+                console.log('🔍 payKeysend available:', typeof nwcjs?.payKeysend);
+                console.log('🔍 payKeysend_OLD available:', typeof nwcjs?.payKeysend_OLD);
                 
-                const paymentResult = await nwcjs.payKeysend(nwcInfo, testDestination, testAmount, testMessage, 15);
+                // Try direct keysend first, then fall back to proxy
+                console.log('🔄 Attempting direct keysend with 5 second timeout...');
+                
+                let paymentResult;
+                try {
+                    const timeoutPromise = new Promise((_, reject) => 
+                        setTimeout(() => reject(new Error('Direct keysend timeout')), 5000)
+                    );
+                    
+                    const keysendPromise = nwcjs.payKeysend_OLD(nwcInfo, testDestination, testAmount, testMessage, 5);
+                    paymentResult = await Promise.race([keysendPromise, timeoutPromise]);
+                    
+                } catch (directError) {
+                    console.log('❌ Direct keysend failed:', directError.message);
+                    console.log('🔄 Trying backend proxy instead...');
+                    
+                    // Fall back to backend proxy
+                    try {
+                        const proxyResponse = await fetch('/api/proxy/keysend', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                destination: testDestination,
+                                amount: testAmount,
+                                message: testMessage,
+                                walletSupportsKeysend: false
+                            })
+                        });
+                        
+                        if (!proxyResponse.ok) {
+                            const error = await proxyResponse.json();
+                            throw new Error(error.error || 'Proxy service failed');
+                        }
+                        
+                        const proxyData = await proxyResponse.json();
+                        
+                        if (proxyData.method === 'proxy' && proxyData.invoice) {
+                            console.log('🔄 Paying proxy invoice...');
+                            paymentResult = await nwcjs.payInvoice(nwcInfo, proxyData.invoice, 10);
+                            console.log('✅ Proxy payment completed!');
+                        } else {
+                            throw new Error('Invalid proxy response');
+                        }
+                        
+                    } catch (proxyError) {
+                        throw new Error(`Both direct keysend and proxy failed: ${proxyError.message}`);
+                    }
+                }
                 
                 if (!paymentResult || paymentResult.error) {
                     throw new Error('Test keysend failed: ' + (paymentResult?.error?.message || 'Unknown error'));

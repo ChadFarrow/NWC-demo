@@ -639,7 +639,7 @@ var nwcjs = {
         if ( bolt11 != invoice ) return "not paid yet";
         return events[ 0 ];
     },
-    payKeysend: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
+    payKeysend: async function( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) {
         console.log('🔧 Using nwcjs.payKeysend method - FIXED VERSION');
         console.log('Input destination:', destination, 'Length:', destination?.length);
         
@@ -909,4 +909,25 @@ var nwcjs = {
             : 'All keysend destination formats failed - no specific error details available';
         throw new Error(detailedError);
     }
+};
+
+// Ensure nwcjs is available globally
+if (typeof window !== 'undefined') {
+    window.nwcjs = nwcjs;
+}
+
+console.log('✅ nwcjs object created with functions:', Object.keys(nwcjs));
+console.log('✅ payKeysend function available:', typeof nwcjs.payKeysend);
+console.log('✅ payKeysend_OLD function available:', typeof nwcjs.payKeysend_OLD);
+
+// Test function definition
+try {
+    console.log('✅ Testing payKeysend function call...');
+    if (typeof nwcjs.payKeysend === 'function') {
+        console.log('✅ payKeysend is a function');
+    } else {
+        console.log('❌ payKeysend is not a function, it is:', typeof nwcjs.payKeysend);
+    }
+} catch (e) {
+    console.error('❌ Error testing payKeysend:', e);
 }

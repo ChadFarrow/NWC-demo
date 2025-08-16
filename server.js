@@ -20,6 +20,11 @@ app.use(express.json());
 // Serve static files from public directory
 app.use(express.static('public'));
 
+// Serve nwcjs.js from root directory
+app.get('/nwcjs.js', (req, res) => {
+    res.sendFile(path.join(__dirname, 'nwcjs.js'));
+});
+
 // Initialize NWC client for proxy if configured
 let nwcClient = null;
 if (process.env.NWC_CONNECTION_STRING) {
@@ -70,9 +75,22 @@ app.post('/api/proxy/keysend', async (req, res) => {
         console.log(`   Amount: ${amount} sats`);
         console.log(`   Destination: ${destination.substring(0, 20)}...`);
         
-        // Create invoice via NWC
+        // Create invoice via NWC with better error handling
         const description = `V4V Payment: ${message || 'Podcast support'}`;
-        const invoice = await nwcClient.makeInvoice(amount, description);
+        console.log(`🔄 Creating invoice via AlbyHub NWC...`);
+        
+        let invoice;
+        try {
+            invoice = await Promise.race([
+                nwcClient.makeInvoice(amount, description),
+                new Promise((_, reject) => 
+                    setTimeout(() => reject(new Error('NWC invoice creation timeout after 10 seconds')), 10000)
+                )
+            ]);
+        } catch (nwcError) {
+            console.error(`❌ NWC invoice creation failed:`, nwcError.message);
+            throw new Error(`Failed to create invoice via AlbyHub: ${nwcError.message}`);
+        }
         
         // Generate tracking ID
         const trackingId = crypto.randomBytes(16).toString('hex');
@@ -204,6 +222,51 @@ app.get('/api/health', (req, res) => {
         active_invoices: invoiceMap.size,
         uptime: process.uptime()
     });
+});
+
+// Test NWC connection endpoint
+app.get('/api/test-nwc', async (req, res) => {
+    if (!nwcClient) {
+        return res.json({
+            success: false,
+            error: 'NWC not configured'
+        });
+    }
+    
+    try {
+        console.log('🧪 Testing NWC connection to AlbyHub...');
+        
+        // Try to create a minimal invoice as a connection test
+        const testInvoice = await Promise.race([
+            nwcClient.makeInvoice(1, 'NWC Connection Test'),
+            new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('NWC test timeout after 10 seconds')), 10000)
+            )
+        ]);
+        
+        console.log('✅ NWC connection test successful!');
+        
+        res.json({
+            success: true,
+            message: 'NWC connection working',
+            relay: nwcClient.relay,
+            test_invoice: testInvoice.substring(0, 20) + '...'
+        });
+        
+    } catch (error) {
+        console.error('❌ NWC connection test failed:', error.message);
+        res.json({
+            success: false,
+            error: error.message,
+            relay: nwcClient.relay,
+            troubleshooting: {
+                'Check AlbyHub': 'Make sure your AlbyHub is running and accessible',
+                'Check relay': 'Verify relay is reachable: ' + nwcClient.relay,
+                'Check permissions': 'Ensure NWC connection has make_invoice permission',
+                'Check connection string': 'Verify NWC_CONNECTION_STRING in .env is correct'
+            }
+        });
+    }
 });
 
 // Serve the main app
