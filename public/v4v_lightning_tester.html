@@ -1271,6 +1271,21 @@
                     const blockIndex = parseInt(checkbox.dataset.block);
                     const block = window.parsedValueBlocks[blockIndex];
                     
+                    // Debug recipient selection
+                    console.log(`🔍 Selected recipient:`, {
+                        title: title || block?.title,
+                        address: recipient,
+                        type: type,
+                        split: block?.split,
+                        isEmpty: !recipient || recipient.length === 0
+                    });
+                    
+                    // Skip recipients with empty addresses
+                    if (!recipient || recipient.length === 0) {
+                        console.warn(`⚠️ Skipping recipient ${title || block?.title}: empty address`);
+                        return;
+                    }
+                    
                     selectedRecipients.push({
                         address: recipient,
                         type: type,
