@@ -690,8 +690,10 @@ var nwcjs = {
         console.log('Calling multiPayKeysend with:', keysendArray);
         
         try {
-            const result = await nwcjs.multiPayKeysend(nwc_info, keysendArray, seconds_of_delay_tolerable);
-            console.log('multiPayKeysend result:', result);
+            // Use payKeysend_OLD for single payments instead of multiPayKeysend
+            console.log('🔄 Using payKeysend_OLD for single payment...');
+            const result = await nwcjs.payKeysend_OLD(nwc_info, destination, amount, message, seconds_of_delay_tolerable);
+            console.log('payKeysend_OLD result:', result);
             
             if (result && result.result) {
                 console.log('✅ Keysend successful');
