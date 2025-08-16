@@ -539,7 +539,7 @@
                         type="url" 
                         id="keysend-proxy-url"
                         class="form-input" 
-                        placeholder="https://your-proxy-server.com"
+                        placeholder="http://localhost:3334"
                         style="margin-bottom: 0.5rem;"
                     >
                     <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem;">
@@ -1152,11 +1152,22 @@
         
         // Load proxy settings on page load
         window.addEventListener('DOMContentLoaded', function() {
+            // Default to The Split Box proxy
+            const DEFAULT_PROXY_URL = 'http://localhost:3334';
+            
+            // Check for saved proxy URL, otherwise use default
             const savedProxy = localStorage.getItem('keysendProxyUrl');
-            if (savedProxy) {
-                document.getElementById('keysend-proxy-url').value = savedProxy;
-                window.keysendProxyUrl = savedProxy;
-                console.log('🔄 Loaded keysend proxy:', savedProxy);
+            const proxyUrl = savedProxy || DEFAULT_PROXY_URL;
+            
+            document.getElementById('keysend-proxy-url').value = proxyUrl;
+            window.keysendProxyUrl = proxyUrl;
+            
+            // If using default for first time, save it
+            if (!savedProxy) {
+                localStorage.setItem('keysendProxyUrl', DEFAULT_PROXY_URL);
+                console.log('🔄 Initialized with The Split Box proxy:', DEFAULT_PROXY_URL);
+            } else {
+                console.log('🔄 Loaded keysend proxy:', proxyUrl);
             }
         });
         
