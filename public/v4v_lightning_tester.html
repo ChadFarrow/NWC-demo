@@ -264,10 +264,10 @@
 
         .rss-status {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
             margin-bottom: 1.5rem;
-            padding: 1rem;
+            padding: 1.25rem;
             background: var(--bg-secondary);
             border-radius: 8px;
             border: 1px solid var(--border-color);
@@ -276,16 +276,22 @@
         .status-item {
             display: flex;
             align-items: center;
-            gap: 0.5rem;
+            gap: 0.75rem;
+            padding: 0.5rem;
+            background: var(--bg-primary);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
         }
 
         .status-icon {
-            font-size: 1.2rem;
+            font-size: 1.3rem;
+            flex-shrink: 0;
         }
 
         .status-text {
             color: var(--text-secondary);
-            font-size: 0.9rem;
+            font-size: 0.95rem;
+            font-weight: 500;
         }
 
         .quick-test {
@@ -451,12 +457,16 @@
     </style>
 </head>
 <body>
-    <button class="theme-toggle" onclick="toggleTheme()">☀️</button>
-    
     <div class="container">
         <header class="header">
             <h1 class="title">NWC Demo</h1>
-                    <p style="color: #f7931e; margin-top: 0.5rem;">NWC Wallet Testing with RSS Feeds! 🚀</p>
+                    <p style="color: #f7931e; margin-top: 0.5rem;">NWC Wallet Testing with RSS Feeds & TSB Proxy! 🚀</p>
+                    <p style="color: #666; font-size: 0.9em; margin-top: 0.25rem;">📦 The Split Box (TSB) enables keysend payments for any wallet</p>
+                    <p style="margin-top: 0.5rem;">
+                        <a href="https://github.com/thebells1111/thesplitbox" target="_blank" style="color: #007bff; text-decoration: none;">
+                            🔗 Learn more about The Split Box
+                        </a>
+                    </p>
         </header>
 
         <div class="card">
@@ -495,7 +505,7 @@
                 </div>
                 
                 <div class="button-group">
-                    <button class="btn btn-primary" onclick="parseValueBlock()">
+                    <button class="btn btn-primary" onclick="parseValueBlock(); return false;">
                         <span class="lightning-icon">⚡</span> Parse Value Block
                     </button>
                     <button class="btn btn-success" onclick="loadTestFeed()">
@@ -523,6 +533,16 @@
                     class="form-input" 
                     placeholder="nostr+walletconnect://pa80990666ef0b64ba5059347beb13242921e54669e680064ca755256a1e3a67..."
                 >
+            </div>
+            
+            <div class="form-group" style="margin-top: 1rem;">
+                <label class="form-label">
+                    <input type="checkbox" id="enableTSB" checked style="margin-right: 0.5rem;">
+                    Enable The Split Box (TSB) Proxy
+                </label>
+                <div class="form-help" style="font-size: 0.9em; color: #666; margin-top: 0.25rem;">
+                    📦 Automatically routes keysend payments through proxy when your wallet doesn't support them
+                </div>
             </div>
             
             <button class="btn btn-secondary" onclick="connectWallet()">
@@ -939,10 +959,15 @@
                 feedStatusElement.style.color = 'var(--accent-success)';
             }
             
-            // Count value blocks and payment methods
-            const totalBlocks = valueBlocks.length;
-            const nodeCount = valueBlocks.filter(block => block.type === 'node').length;
-            const lnaddressCount = valueBlocks.filter(block => block.type === 'lnaddress').length;
+            // Count actual value block groups (not individual recipients)
+            const uniqueGroups = new Set(valueBlocks.map(block => block.group + '-' + (block.episodeNumber || 'channel')));
+            const totalBlocks = uniqueGroups.size;
+            
+            // Count unique payment addresses (deduplicated)
+            const uniqueNodes = new Set(valueBlocks.filter(block => block.type === 'node').map(block => block.value));
+            const uniqueAddresses = new Set(valueBlocks.filter(block => block.type === 'lnaddress').map(block => block.value));
+            const nodeCount = uniqueNodes.size;
+            const lnaddressCount = uniqueAddresses.size;
             
             // Update value blocks count
             const valueBlocksCountElement = document.getElementById('value-blocks-count');
@@ -1095,9 +1120,6 @@
             console.log('🎨 Setting container HTML:', html.substring(0, 100) + '...');
             container.innerHTML = html;
             console.log('✅ Value block display updated successfully');
-            
-            // Scroll to the new content
-            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function clearSettings() {
@@ -1260,7 +1282,12 @@
                     // Use NWC Bridge which handles everything reliably on the backend
                     try {
                         // Initialize bridge with NWC connection
-                        nwcBridge.init(document.getElementById('nwcConnectionString').value);
+                        const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                        const nwcString = nwcInput?.value?.trim();
+                        if (!nwcString) {
+                            throw new Error('NWC connection string not found');
+                        }
+                        nwcBridge.init(nwcString);
                         
                         // Send keysend (will automatically use proxy if needed)
                         paymentResult = await nwcBridge.sendKeysend(
@@ -1371,11 +1398,20 @@
                 const supportsKeysend = supportedMethods.includes('pay_keysend');
                 window.nwcSupportsKeysend = supportsKeysend;
                 
+                // Check for known problematic wallets
+                const isCoinos = nwcString.includes('relay.coinos.io');
+                
                 if (!supportsKeysend) {
                     console.warn('⚠️ This wallet does not support keysend payments');
                     console.log('Supported methods:', supportedMethods);
                 } else {
                     console.log('✅ Wallet supports keysend');
+                    
+                    // Special warning for Coinos
+                    if (isCoinos) {
+                        console.warn('⚠️ Note: Coinos wallets may have unreliable keysend support despite claiming compatibility');
+                        console.warn('💡 If payments hang or fail, the proxy will automatically handle keysend payments');
+                    }
                 }
                 
                 // Get balance to verify sufficient funds
@@ -1391,6 +1427,10 @@
                 }
                 
                 console.log('💰 Balance:', balanceSats, 'sats');
+                
+                // Show TSB proxy status
+                const tsbEnabled = document.getElementById('enableTSB')?.checked !== false;
+                console.log(`📦 TSB Proxy: ${tsbEnabled ? 'Enabled' : 'Disabled'}`);
                 
                 // Get selected recipients from the parsed value blocks
                 const selectedRecipients = [];
@@ -1472,14 +1512,21 @@
                                     method: 'keysend'
                                 });
                             } else {
-                                // Wallet doesn't support keysend - use backend proxy transparently
-                                console.log(`🔄 Will use backend proxy for ${recipient.title}`);
-                                paymentsToMake.push({
-                                    ...recipient,
-                                    address: recipient.address,
-                                    amount: splitAmount,
-                                    method: 'proxy'
-                                });
+                                // Wallet doesn't support keysend - check if TSB proxy is enabled
+                                const tsbEnabled = document.getElementById('enableTSB')?.checked !== false;
+                                
+                                if (tsbEnabled) {
+                                    console.log(`🔄 Will use backend proxy for ${recipient.title}`);
+                                    paymentsToMake.push({
+                                        ...recipient,
+                                        address: recipient.address,
+                                        amount: splitAmount,
+                                        method: 'proxy'
+                                    });
+                                } else {
+                                    console.log(`⚠️ Skipping ${recipient.title}: TSB proxy disabled and wallet doesn't support keysend`);
+                                    // Skip this payment - don't add to paymentsToMake array
+                                }
                             }
                         } else if (recipient.type === 'lnaddress' && recipient.address.includes('@')) {
                             // Lightning address - try LNURL-pay
@@ -1554,18 +1601,33 @@
                                 );
                                 result = await Promise.race([keysendPromise, timeoutPromise]);
                             } catch (keysendError) {
-                                console.log(`⚠️ Direct keysend failed, using NWC Bridge...`);
+                                console.log(`⚠️ Direct keysend failed for ${payment.title}`);
                                 
-                                // Fallback to NWC Bridge which handles everything reliably
-                                if (!nwcBridge.connectionString) {
-                                    nwcBridge.init(document.getElementById('nwcConnectionString').value);
+                                // Check if TSB proxy is enabled before falling back
+                                const tsbEnabled = document.getElementById('enableTSB')?.checked !== false;
+                                
+                                if (tsbEnabled) {
+                                    console.log(`🔄 Falling back to NWC Bridge proxy...`);
+                                    
+                                    // Fallback to NWC Bridge which handles everything reliably
+                                    if (!nwcBridge.connectionString) {
+                                        const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                            const nwcString = nwcInput?.value?.trim();
+                            if (!nwcString) {
+                                throw new Error('NWC connection string not found');
+                            }
+                            nwcBridge.init(nwcString);
+                                    }
+                                    
+                                    result = await nwcBridge.sendKeysend(
+                                        payment.address,
+                                        payment.amount,
+                                        `${message} (${payment.split}% split to ${payment.title})`
+                                    );
+                                } else {
+                                    console.log(`❌ TSB proxy disabled - cannot fallback for ${payment.title}`);
+                                    throw new Error(`Keysend failed and TSB proxy is disabled: ${keysendError.message}`);
                                 }
-                                
-                                result = await nwcBridge.sendKeysend(
-                                    payment.address,
-                                    payment.amount,
-                                    `${message} (${payment.split}% split to ${payment.title})`
-                                );
                             }
                         } else if (payment.method === 'proxy') {
                             // Handle transparent proxy-routed keysend payment using NWC Bridge
@@ -1574,7 +1636,12 @@
                             try {
                                 // Initialize NWC Bridge if not already done
                                 if (!nwcBridge.connectionString) {
-                                    nwcBridge.init(document.getElementById('nwcConnectionString').value);
+                                    const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                                    const nwcString = nwcInput?.value?.trim();
+                                    if (!nwcString) {
+                                        throw new Error('NWC connection string not found');
+                                    }
+                                    nwcBridge.init(nwcString);
                                 }
                                 
                                 // Use NWC Bridge which handles proxy automatically
@@ -1610,8 +1677,12 @@
                                 // Let's try a simpler approach - just use the tryToPayInvoice but with error handling
                                 console.log(`💳 Attempting to pay invoice...`);
                                 
-                                // Use proper payInvoice method that waits for response
-                                result = await nwcjs.payInvoice(nwcInfo, invoice, 15);
+                                // Use proper payInvoice method that waits for response with timeout
+                                const paymentPromise = nwcjs.payInvoice(nwcInfo, invoice, 15);
+                                const timeoutPromise = new Promise((_, reject) => 
+                                    setTimeout(() => reject(new Error('Invoice payment timeout after 15 seconds')), 15000)
+                                );
+                                result = await Promise.race([paymentPromise, timeoutPromise]);
                                 
                                 console.log(`📄 Invoice payment result:`, result);
                                 
