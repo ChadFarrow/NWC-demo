@@ -711,13 +711,19 @@
                     if (proxyData.invoice) {
                         console.log('💳 Paying proxy invoice with user wallet...');
                         
-                        // Import nwcjs to pay the invoice
-                        if (typeof nwcjs !== 'undefined') {
+                        // Parse the NWC connection string and use nwcjs to pay the invoice
+                        if (typeof nwcjs !== 'undefined' && this.connectionString) {
                             try {
-                                const paymentResult = await nwcjs.payInvoice(this.connectionString, proxyData.invoice);
+                                // Parse the NWC connection string
+                                const nwcInfo = nwcjs.processNWCstring(this.connectionString);
+                                if (!nwcInfo) {
+                                    throw new Error('Failed to parse NWC connection string');
+                                }
+                                
+                                // Pay the proxy invoice with the user's wallet
+                                const paymentResult = await nwcjs.payInvoice(nwcInfo, proxyData.invoice, 15);
                                 console.log('✅ Proxy invoice paid successfully:', paymentResult);
                                 
-                                // Return the payment result instead of just proxy data
                                 return {
                                     success: true,
                                     method: 'proxy_completed',
@@ -729,7 +735,8 @@
                                 throw new Error(`Proxy invoice payment failed: ${payError.message}`);
                             }
                         } else {
-                            throw new Error('nwcjs not available for invoice payment');
+                            console.log('⚠️ nwcjs not available or no connection string, returning proxy data without auto-payment');
+                            console.log('📄 Manual payment required for invoice:', proxyData.invoice.substring(0, 50) + '...');
                         }
                     }
                     
