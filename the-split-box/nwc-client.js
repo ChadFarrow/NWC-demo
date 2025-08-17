@@ -5,6 +5,15 @@ class NWCClient {
     constructor(connectionString) {
         this.connectionString = connectionString;
         this.client = null;
+        
+        // Parse the connection string to get relay info
+        try {
+            const url = new URL(connectionString.replace('nostr+walletconnect://', 'https://'));
+            const params = new URLSearchParams(url.search);
+            this.relay = params.get('relay')?.replace(/%2F/g, '/').replace(/%3A/g, ':');
+        } catch (error) {
+            this.relay = 'Unknown';
+        }
     }
     
     async ensureConnected() {
