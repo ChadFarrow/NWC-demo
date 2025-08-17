@@ -12,7 +12,7 @@ require('dotenv').config({ path: './the-split-box/.env' });
 const NWCClient = require('./the-split-box/nwc-client');
 
 const app = express();
-const PORT = 3003; // Always use 3003 for main server
+const PORT = process.env.PORT || 3003; // Use environment PORT or default to 3003
 
 // Middleware
 app.use(cors());

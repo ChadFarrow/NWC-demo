@@ -7,9 +7,9 @@
     "node": "22.x"
   },
   "scripts": {
-    "build": "echo 'Static build completed'",
+    "build": "echo 'Build completed'",
     "start": "node server.js",
-    "dev": "node server.js",
+    "dev": "node server.js", 
     "start:proxy": "node proxy.js",
     "vercel-build": "echo 'Vercel build completed'"
   },

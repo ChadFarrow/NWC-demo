@@ -1,0 +1,21 @@
+name: nwc-demo
+services:
+- name: web
+  source_dir: /
+  github:
+    repo: ChadFarrow/NWC-demo
+    branch: TSB
+  run_command: npm start
+  environment_slug: node-js
+  instance_count: 1
+  instance_size_slug: basic-xxs
+  http_port: 3003
+  routes:
+  - path: /
+  env:
+  - key: NODE_ENV
+    value: production
+  - key: NWC_CONNECTION_STRING
+    value: ${NWC_CONNECTION_STRING}
+  - key: PORT
+    value: "3003"
