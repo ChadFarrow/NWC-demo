@@ -660,8 +660,15 @@
             
             sendKeysend: async function(destination, amount, message) {
                 try {
+                    // Determine the base URL for API calls
+                    const baseUrl = window.location.hostname.includes('vercel.app') || window.location.hostname.includes('railway.app')
+                        ? 'https://nwc-demo-production.up.railway.app'  // Use Railway for proxy functionality
+                        : '';  // Use relative URLs for local development
+                    
+                    console.log(`🔗 Using API base URL: ${baseUrl || 'relative'}`);
+                    
                     // Try direct keysend first via backend
-                    const keysendResponse = await fetch('/api/nwc/keysend', {
+                    const keysendResponse = await fetch(`${baseUrl}/api/nwc/keysend`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
@@ -675,20 +682,21 @@
                     const keysendResult = await keysendResponse.json();
                     
                     if (keysendResult.success) {
+                        console.log('✅ Direct keysend successful');
                         return keysendResult;
                     }
                     
                     // If keysend not supported, use proxy
-                    console.log('🔄 Keysend not supported, using proxy...');
+                    console.log('🔄 Keysend not supported, using Railway proxy...');
                     
-                    const proxyResponse = await fetch('/api/proxy/keysend', {
+                    const proxyResponse = await fetch(`${baseUrl}/api/proxy/keysend`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             destination: destination,
                             amount: amount,
                             message: message,
-                            nwc_string: this.connectionString
+                            walletSupportsKeysend: false
                         })
                     });
                     
@@ -697,6 +705,7 @@
                         throw new Error(proxyData.error || 'Proxy failed');
                     }
                     
+                    console.log('✅ Proxy payment initiated:', proxyData);
                     return proxyData;
                     
                 } catch (error) {
