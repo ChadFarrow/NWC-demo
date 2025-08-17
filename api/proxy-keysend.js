@@ -43,12 +43,20 @@ export default async function handler(req, res) {
             const { webln } = await import('@getalby/sdk');
             const { NostrWebLNProvider } = webln;
             
+            console.log('Creating NWC provider...');
+            
             // Create provider with backend NWC
             const provider = new NostrWebLNProvider({
                 nostrWalletConnectUrl: backendNWC
             });
             
+            console.log('Enabling provider...');
             await provider.enable();
+            
+            // Get wallet info to check capabilities
+            console.log('Getting wallet info...');
+            const info = await provider.getInfo();
+            console.log('Wallet info:', info);
             
             // Try to send keysend from backend wallet
             const keysendResult = await provider.keysend({
@@ -71,11 +79,21 @@ export default async function handler(req, res) {
         } catch (keysendError) {
             console.error('Keysend error:', keysendError);
             
-            // If keysend fails, return error
+            // Check if it's a method not supported error
+            const errorMessage = keysendError.message || keysendError.toString() || 'Unknown error';
+            const isNotSupported = errorMessage.includes('not supported') || 
+                                  errorMessage.includes('not implemented') ||
+                                  errorMessage.includes('NOT_IMPLEMENTED');
+            
+            // If keysend fails, return detailed error
             return res.status(500).json({
                 success: false,
                 error: 'Backend wallet keysend failed',
-                details: keysendError.message || 'Unknown error'
+                details: errorMessage,
+                keysend_not_supported: isNotSupported,
+                suggestion: isNotSupported ? 
+                    'The backend wallet does not support keysend. You need an AlbyHub or wallet that supports keysend for the proxy to work.' :
+                    'Check the backend wallet connection and balance.'
             });
         }
         
