@@ -653,6 +653,10 @@
         // Debug script loading - updated
         window.addEventListener('DOMContentLoaded', function() {
             console.log('DOMContentLoaded - nwcjs available:', typeof nwcjs !== 'undefined');
+            console.log('DOMContentLoaded - nwcBridge available:', typeof nwcBridge !== 'undefined');
+            if (typeof nwcBridge === 'undefined') {
+                console.error('⚠️ Warning: nwc-bridge.js failed to load! TSB proxy payments will not work.');
+            }
             console.log('✅ Script loading check complete');
         });
     </script>
@@ -1718,6 +1722,11 @@
                                 if (tsbEnabled) {
                                     console.log(`🔄 Falling back to NWC Bridge proxy...`);
                                     
+                                    // Check if nwcBridge is available
+                                    if (typeof nwcBridge === 'undefined') {
+                                        throw new Error('NWC Bridge library not loaded. Please refresh the page.');
+                                    }
+                                    
                                     // Fallback to NWC Bridge which handles everything reliably
                                     if (!nwcBridge.connectionString) {
                                         const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
@@ -1743,6 +1752,11 @@
                             console.log(`🔄 Routing keysend through backend proxy for ${payment.title}`);
                             
                             try {
+                                // Check if nwcBridge is available
+                                if (typeof nwcBridge === 'undefined') {
+                                    throw new Error('NWC Bridge library not loaded. Please refresh the page.');
+                                }
+                                
                                 // Initialize NWC Bridge if not already done
                                 if (!nwcBridge.connectionString) {
                                     const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
