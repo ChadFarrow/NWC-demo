@@ -647,7 +647,65 @@
     <script src="https://bundle.run/noble-secp256k1@1.2.14"></script>
     <script src="https://bundle.run/bech32@2.0.0"></script>
     <script src="./nwcjs.js"></script>
-    <script src="./nwc-bridge.js"></script>
+    <!-- Inline NWC Bridge to avoid loading issues -->
+    <script>
+        // Simple inline NWC Bridge for proxy payments
+        window.nwcBridge = {
+            connectionString: null,
+            
+            init: function(nwcString) {
+                this.connectionString = nwcString;
+                console.log('✅ NWC Bridge initialized (inline)');
+            },
+            
+            sendKeysend: async function(destination, amount, message) {
+                try {
+                    // Try direct keysend first via backend
+                    const keysendResponse = await fetch('/api/nwc/keysend', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            nwc_string: this.connectionString,
+                            destination: destination,
+                            amount: amount,
+                            message: message
+                        })
+                    });
+                    
+                    const keysendResult = await keysendResponse.json();
+                    
+                    if (keysendResult.success) {
+                        return keysendResult;
+                    }
+                    
+                    // If keysend not supported, use proxy
+                    console.log('🔄 Keysend not supported, using proxy...');
+                    
+                    const proxyResponse = await fetch('/api/proxy/keysend', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            destination: destination,
+                            amount: amount,
+                            message: message,
+                            nwc_string: this.connectionString
+                        })
+                    });
+                    
+                    const proxyData = await proxyResponse.json();
+                    if (!proxyData.success) {
+                        throw new Error(proxyData.error || 'Proxy failed');
+                    }
+                    
+                    return proxyData;
+                    
+                } catch (error) {
+                    console.error('❌ Keysend error:', error);
+                    throw error;
+                }
+            }
+        };
+    </script>
 
     <script>
         // Debug script loading - updated
@@ -1722,11 +1780,6 @@
                                 if (tsbEnabled) {
                                     console.log(`🔄 Falling back to NWC Bridge proxy...`);
                                     
-                                    // Check if nwcBridge is available
-                                    if (typeof nwcBridge === 'undefined') {
-                                        throw new Error('NWC Bridge library not loaded. Please refresh the page.');
-                                    }
-                                    
                                     // Fallback to NWC Bridge which handles everything reliably
                                     if (!nwcBridge.connectionString) {
                                         const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
@@ -1752,11 +1805,6 @@
                             console.log(`🔄 Routing keysend through backend proxy for ${payment.title}`);
                             
                             try {
-                                // Check if nwcBridge is available
-                                if (typeof nwcBridge === 'undefined') {
-                                    throw new Error('NWC Bridge library not loaded. Please refresh the page.');
-                                }
-                                
                                 // Initialize NWC Bridge if not already done
                                 if (!nwcBridge.connectionString) {
                                     const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
