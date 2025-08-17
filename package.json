@@ -4,7 +4,7 @@
   "description": "A demo application showcasing Nostr Wallet Connect (NWC) integration with Lightning Network payments",
   "main": "public/v4v_lightning_tester.html",
   "engines": {
-    "node": "22.x"
+    "node": "18.x"
   },
   "scripts": {
     "build": "echo 'Build completed'",
