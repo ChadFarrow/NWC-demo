@@ -706,6 +706,33 @@
                     }
                     
                     console.log('✅ Proxy payment initiated:', proxyData);
+                    
+                    // Now pay the proxy invoice with the user's wallet to complete the TSB flow
+                    if (proxyData.invoice) {
+                        console.log('💳 Paying proxy invoice with user wallet...');
+                        
+                        // Import nwcjs to pay the invoice
+                        if (typeof nwcjs !== 'undefined') {
+                            try {
+                                const paymentResult = await nwcjs.payInvoice(this.connectionString, proxyData.invoice);
+                                console.log('✅ Proxy invoice paid successfully:', paymentResult);
+                                
+                                // Return the payment result instead of just proxy data
+                                return {
+                                    success: true,
+                                    method: 'proxy_completed',
+                                    payment_hash: paymentResult.result?.payment_hash,
+                                    tracking_id: proxyData.tracking_id
+                                };
+                            } catch (payError) {
+                                console.error('❌ Failed to pay proxy invoice:', payError);
+                                throw new Error(`Proxy invoice payment failed: ${payError.message}`);
+                            }
+                        } else {
+                            throw new Error('nwcjs not available for invoice payment');
+                        }
+                    }
+                    
                     return proxyData;
                     
                 } catch (error) {
