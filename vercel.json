@@ -52,6 +52,8 @@
     { "source": "/api/metaboost-viewer", "destination": "/api/metaboost-viewer.js" },
     { "source": "/api/metaboost-v2", "destination": "/api/metaboost-v2.js" },
     { "source": "/api/dashboard", "destination": "/api/dashboard.js" },
+    { "source": "/api/nwc/keysend", "destination": "/api/nwc-keysend.js" },
+    { "source": "/api/proxy/keysend", "destination": "/api/proxy-keysend.js" },
     { "source": "/favicon.ico", "destination": "/public/favicon.png" },
     { "source": "/logo", "destination": "/public/logo.png" }
   ],
