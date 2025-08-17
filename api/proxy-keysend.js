@@ -39,30 +39,42 @@ export default async function handler(req, res) {
         console.log(`🔄 Proxy keysend: ${amount} sats to ${destination.substring(0, 16)}...`);
         
         try {
-            // Dynamically import the webln provider
-            const { webln } = await import('@getalby/sdk');
-            const { NostrWebLNProvider } = webln;
+            // Use the NWC client directly instead of WebLN provider
+            const { NWCClient } = await import('@getalby/sdk');
             
-            console.log('Creating NWC provider...');
+            console.log('Creating NWC client...');
             
-            // Create provider with backend NWC
-            const provider = new NostrWebLNProvider({
+            // Create NWC client
+            const client = new NWCClient({
                 nostrWalletConnectUrl: backendNWC
             });
             
-            console.log('Enabling provider...');
-            await provider.enable();
-            
-            // Get wallet info to check capabilities
             console.log('Getting wallet info...');
-            const info = await provider.getInfo();
+            const info = await client.getInfo();
             console.log('Wallet info:', info);
             
-            // Try to send keysend from backend wallet
-            const keysendResult = await provider.keysend({
+            // Check if wallet supports keysend
+            const supportsKeysend = info.methods?.includes('pay_keysend') || 
+                                   info.methods?.includes('keysend') ||
+                                   info.methods?.includes('pay_to_address');
+            
+            console.log('Supports keysend:', supportsKeysend, 'Methods:', info.methods);
+            
+            if (!supportsKeysend) {
+                return res.status(501).json({
+                    success: false,
+                    error: 'Backend wallet does not support keysend',
+                    wallet_methods: info.methods,
+                    suggestion: 'Configure an AlbyHub or other keysend-capable wallet as the backend'
+                });
+            }
+            
+            // Try to send keysend payment
+            console.log('Sending keysend...');
+            const keysendResult = await client.payKeysend({
                 destination: destination,
-                amount: amount,
-                customRecords: message ? { 34349334: message } : {}
+                amount: amount * 1000, // Convert to millisats
+                customRecords: message ? [{ type: 34349334, value: message }] : []
             });
             
             console.log('✅ Keysend successful via backend wallet');
