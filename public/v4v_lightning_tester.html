@@ -1892,9 +1892,9 @@
                                 console.log(`💳 Attempting to pay invoice...`);
                                 
                                 // Use proper payInvoice method that waits for response with timeout
-                                const paymentPromise = nwcjs.payInvoice(nwcInfo, invoice, 15);
+                                const paymentPromise = nwcjs.payInvoice(nwcInfo, invoice, 30);
                                 const timeoutPromise = new Promise((_, reject) => 
-                                    setTimeout(() => reject(new Error('Invoice payment timeout after 15 seconds')), 15000)
+                                    setTimeout(() => reject(new Error('Invoice payment timeout after 30 seconds')), 30000)
                                 );
                                 result = await Promise.race([paymentPromise, timeoutPromise]);
                                 
@@ -2154,9 +2154,9 @@
                 
                 // Pay the invoice
                 btn.innerHTML = '💳 Paying invoice...';
-                const paymentPromise = nwcjs.payInvoice(nwcInfo, invoice, 15);
+                const paymentPromise = nwcjs.payInvoice(nwcInfo, invoice, 30);
                 const timeoutPromise = new Promise((_, reject) => 
-                    setTimeout(() => reject(new Error('Payment timeout after 15 seconds')), 15000)
+                    setTimeout(() => reject(new Error('Payment timeout after 30 seconds')), 30000)
                 );
                 const paymentResult = await Promise.race([paymentPromise, timeoutPromise]);
                 
