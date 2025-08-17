@@ -2,6 +2,11 @@
 // Serves the frontend and transparently handles keysend proxy routing
 
 require('websocket-polyfill'); // Required for Alby SDK
+
+// Add crypto polyfill for Alby SDK in Node.js
+if (!global.crypto) {
+    global.crypto = require('crypto').webcrypto;
+}
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -28,9 +33,16 @@ app.get('/nwcjs.js', (req, res) => {
 
 // Initialize NWC client for proxy if configured
 let nwcClient = null;
-if (process.env.NWC_CONNECTION_STRING) {
+const nwcString = process.env.NWC_CONNECTION_STRING;
+console.log('🔍 NWC Environment check:', {
+    env_set: !!nwcString,
+    env_length: nwcString ? nwcString.length : 0,
+    env_preview: nwcString ? nwcString.substring(0, 30) + '...' : 'not set'
+});
+
+if (nwcString) {
     try {
-        nwcClient = new NWCClient(process.env.NWC_CONNECTION_STRING);
+        nwcClient = new NWCClient(nwcString);
         console.log('✅ Split Box proxy enabled with NWC relay:', nwcClient.relay);
     } catch (error) {
         console.error('⚠️  Split Box proxy disabled - NWC error:', error.message);
