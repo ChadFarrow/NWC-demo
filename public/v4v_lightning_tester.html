@@ -214,6 +214,26 @@
             opacity: 0.9;
         }
 
+        .wallet-link {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: var(--bg-secondary);
+            border: 2px solid var(--border-color);
+            border-radius: 6px;
+            text-decoration: none;
+            color: var(--text-primary);
+            font-weight: 500;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .wallet-link:hover {
+            background: var(--accent-primary);
+            color: white;
+            border-color: var(--accent-primary);
+            text-decoration: none;
+        }
+
         .rss-feed-info {
             margin-bottom: 1rem;
         }
@@ -466,6 +486,12 @@
                         <a href="https://github.com/thebells1111/thesplitbox" target="_blank" style="color: #007bff; text-decoration: none;">
                             🔗 Learn more about The Split Box
                         </a>
+                    </p>
+                    <p style="margin-top: 0.75rem; font-size: 0.9em;">
+                        💼 NWC Wallets: 
+                        <a href="https://primal.net/downloads" target="_blank" style="color: #007bff; text-decoration: none; margin: 0 0.5rem;">Primal</a>
+                        <a href="https://coinos.io/" target="_blank" style="color: #007bff; text-decoration: none; margin: 0 0.5rem;">Coinos</a>
+                        <a href="https://albyhub.com/" target="_blank" style="color: #007bff; text-decoration: none; margin: 0 0.5rem;">Alby Hub</a>
                     </p>
         </header>
 
@@ -1790,9 +1816,12 @@
                             }
                         }
                         
-                        // Check for successful payment according to NIP-47 spec
-                        if (result && result.result_type && !result.error) {
-                            const paymentHash = result.result?.payment_hash || result.result?.preimage || 'N/A';
+                        // Check for successful payment - handle both NIP-47 and TSB proxy response formats
+                        const isNip47Success = result && result.result_type && !result.error;
+                        const isTsbSuccess = result && result.success === true;
+                        
+                        if (isNip47Success || isTsbSuccess) {
+                            const paymentHash = result.result?.payment_hash || result.result?.preimage || result.payment_hash || 'N/A';
                             paymentResults.push({
                                 recipient: payment.title,
                                 amount: payment.amount,
@@ -1801,11 +1830,16 @@
                                 success: true,
                                 result: result,
                                 hash: paymentHash,
-                                preimage: result.result?.preimage,
-                                fees_paid: result.result?.fees_paid
+                                preimage: result.result?.preimage || result.preimage,
+                                fees_paid: result.result?.fees_paid || result.fees_paid
                             });
                             totalSent += payment.amount;
-                            console.log(`✅ Payment ${i + 1} successful (${payment.method}):`, payment.title, payment.amount, 'sats');
+                            
+                            if (isTsbSuccess) {
+                                console.log(`✅ Payment ${i + 1} successful via TSB proxy:`, payment.title, payment.amount, 'sats');
+                            } else {
+                                console.log(`✅ Payment ${i + 1} successful (${payment.method}):`, payment.title, payment.amount, 'sats');
+                            }
                         } else {
                             // Handle NIP-47 errors (PAYMENT_FAILED, etc.)
                             const errorMsg = result?.error?.message || result?.error?.code || 'Payment failed - no response received';
