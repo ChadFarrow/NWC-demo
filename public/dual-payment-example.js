@@ -1,4 +1,474 @@
-// Enhanced RSS parsing and payment routing for dual payment methods
+// Dual Payment Methods Demo - Smart Payment Routing
+// This demonstrates how to handle both keysend and Lightning address payments
+// for universal wallet compatibility without TSB proxy
+
+let nwcClient = null;
+let walletCapabilities = {
+    keysend: false,
+    invoice: false,
+    lnaddress: false
+};
+let currentEpisode = null;
+let paymentStats = {
+    keysend: 0,
+    lnaddress: 0,
+    skipped: 0,
+    totalSats: 0
+};
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadFeed();
+    checkExistingConnection();
+});
+
+// Check if we have an existing NWC connection
+async function checkExistingConnection() {
+    const storedConnection = localStorage.getItem('nwc_connection');
+    if (storedConnection) {
+        try {
+            await connectWithString(storedConnection);
+        } catch (error) {
+            console.error('Failed to restore connection:', error);
+            localStorage.removeItem('nwc_connection');
+        }
+    }
+}
+
+// Connect to NWC wallet
+async function connectWallet() {
+    try {
+        // Check if we have a connection string in the URL or prompt for one
+        const urlParams = new URLSearchParams(window.location.search);
+        let connectionString = urlParams.get('nwc') || prompt('Enter your NWC connection string:');
+        
+        if (!connectionString) {
+            logMessage('Connection cancelled', 'warning');
+            return;
+        }
+        
+        await connectWithString(connectionString);
+        
+    } catch (error) {
+        console.error('Connection error:', error);
+        logMessage(`Connection failed: ${error.message}`, 'error');
+        updateConnectionStatus(false);
+    }
+}
+
+// Connect using NWC connection string
+async function connectWithString(connectionString) {
+    // Basic validation and parsing
+    if (!connectionString.startsWith('nostr+walletconnect://')) {
+        throw new Error('Invalid NWC connection string format');
+    }
+    
+    try {
+        // Parse the connection string
+        const nwcUrl = new URL(connectionString);
+        const pubkey = nwcUrl.hostname || nwcUrl.pathname.replace('//', '');
+        const relay = nwcUrl.searchParams.get('relay');
+        const secret = nwcUrl.searchParams.get('secret');
+        
+        if (!pubkey || !relay || !secret) {
+            throw new Error('Missing required NWC parameters');
+        }
+        
+        // Initialize with a basic client structure
+        nwcClient = {
+            pubkey: pubkey,
+            relay: relay,
+            secret: secret,
+            connected: false
+        };
+        
+        // Simulate connection for demo purposes
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        nwcClient.connected = true;
+        
+        // Simulate getting wallet info
+        await detectWalletCapabilities();
+        
+        // Store connection for persistence
+        localStorage.setItem('nwc_connection', connectionString);
+        
+        updateConnectionStatus(true);
+        logMessage('Wallet connected successfully', 'success');
+        
+    } catch (error) {
+        throw new Error(`Failed to connect: ${error.message}`);
+    }
+}
+
+// Detect wallet capabilities
+async function detectWalletCapabilities() {
+    if (!nwcClient) return;
+    
+    try {
+        // Simulate wallet info response
+        const walletName = 'Demo Wallet';
+        document.getElementById('wallet-name').textContent = walletName;
+        
+        // For demo purposes, simulate different wallet capabilities
+        // In a real app, this would query the actual wallet
+        const demoCapabilities = {
+            keysend: true,
+            invoice: true,
+            lnaddress: true
+        };
+        
+        walletCapabilities = demoCapabilities;
+        
+        // Update UI
+        updateCapabilityDisplay();
+        
+    } catch (error) {
+        console.error('Failed to detect capabilities:', error);
+        // Default to invoice-only if detection fails
+        walletCapabilities = {
+            keysend: false,
+            invoice: true,
+            lnaddress: true
+        };
+        updateCapabilityDisplay();
+    }
+}
+
+// Update capability display in UI
+function updateCapabilityDisplay() {
+    document.getElementById('cap-keysend').className = 
+        walletCapabilities.keysend ? 'supported' : 'unsupported';
+    document.getElementById('cap-invoice').className = 
+        walletCapabilities.invoice ? 'supported' : 'unsupported';
+    document.getElementById('cap-lnaddress').className = 
+        walletCapabilities.lnaddress ? 'supported' : 'unsupported';
+}
+
+// Update connection status UI
+function updateConnectionStatus(connected) {
+    const statusBadge = document.getElementById('connection-status');
+    const walletInfo = document.getElementById('wallet-info');
+    const connectBtn = document.getElementById('connect-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const sendBtn = document.getElementById('send-payment-btn');
+    
+    if (connected) {
+        statusBadge.textContent = 'Connected';
+        statusBadge.className = 'status-badge status-connected';
+        walletInfo.style.display = 'block';
+        connectBtn.style.display = 'none';
+        disconnectBtn.style.display = 'block';
+        if (currentEpisode) {
+            sendBtn.disabled = false;
+        }
+    } else {
+        statusBadge.textContent = 'Disconnected';
+        statusBadge.className = 'status-badge status-disconnected';
+        walletInfo.style.display = 'none';
+        connectBtn.style.display = 'block';
+        disconnectBtn.style.display = 'none';
+        sendBtn.disabled = true;
+    }
+}
+
+// Disconnect wallet
+function disconnectWallet() {
+    nwcClient = null;
+    localStorage.removeItem('nwc_connection');
+    updateConnectionStatus(false);
+    logMessage('Wallet disconnected', 'info');
+}
+
+// Load RSS feed
+async function loadFeed() {
+    try {
+        const response = await fetch('/test-feed.xml');
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xml = parser.parseFromString(text, 'text/xml');
+        
+        // Get all episodes
+        const items = xml.querySelectorAll('item');
+        const episodeSelect = document.getElementById('episode-select');
+        
+        items.forEach((item, index) => {
+            const title = item.querySelector('title').textContent;
+            const option = document.createElement('option');
+            option.value = index;
+            option.textContent = title;
+            episodeSelect.appendChild(option);
+        });
+        
+        // Store the feed for later use
+        window.rssFeed = xml;
+        
+    } catch (error) {
+        console.error('Failed to load feed:', error);
+        logMessage('Failed to load RSS feed', 'error');
+    }
+}
+
+// Load selected episode
+function loadEpisode() {
+    const episodeIndex = document.getElementById('episode-select').value;
+    if (!episodeIndex && episodeIndex !== '0') {
+        document.getElementById('episode-info').style.display = 'none';
+        document.getElementById('recipients-container').style.display = 'none';
+        currentEpisode = null;
+        return;
+    }
+    
+    const items = window.rssFeed.querySelectorAll('item');
+    const item = items[parseInt(episodeIndex)];
+    
+    // Get episode info
+    const title = item.querySelector('title').textContent;
+    const description = item.querySelector('description').textContent;
+    
+    // Update UI
+    document.getElementById('episode-title').textContent = title;
+    document.getElementById('episode-title').style.color = 'var(--text-primary)';
+    document.getElementById('episode-description').textContent = description;
+    document.getElementById('episode-description').style.color = 'var(--text-secondary)';
+    document.getElementById('episode-info').style.display = 'block';
+    
+    // Get value block (episode-level or channel-level)
+    let valueBlock = item.querySelector('value');
+    if (!valueBlock) {
+        // Use channel-level value block
+        valueBlock = window.rssFeed.querySelector('channel > value');
+    }
+    
+    // Parse recipients
+    const recipients = parseRecipients(valueBlock);
+    currentEpisode = {
+        title: title,
+        recipients: recipients
+    };
+    
+    // Display recipients with smart routing preview
+    displayRecipients(recipients);
+    
+    // Enable send button if connected
+    if (nwcClient && nwcClient.connected) {
+        document.getElementById('send-payment-btn').disabled = false;
+    }
+    
+    logMessage(`Loaded episode: ${title}`, 'info');
+}
+
+// Parse recipients from value block
+function parseRecipients(valueBlock) {
+    const recipients = [];
+    const recipientElements = valueBlock.querySelectorAll('valueRecipient');
+    
+    // Group recipients by name to identify dual payment options
+    const recipientMap = {};
+    
+    recipientElements.forEach(element => {
+        const name = element.getAttribute('name');
+        const type = element.getAttribute('type');
+        const address = element.getAttribute('address');
+        const split = parseInt(element.getAttribute('split'));
+        
+        if (!recipientMap[name]) {
+            recipientMap[name] = {
+                name: name,
+                split: split,
+                methods: {}
+            };
+        }
+        
+        if (type === 'node') {
+            recipientMap[name].methods.keysend = address;
+        } else if (type === 'lnaddress') {
+            recipientMap[name].methods.lnaddress = address;
+        }
+    });
+    
+    // Convert to array
+    for (const name in recipientMap) {
+        recipients.push(recipientMap[name]);
+    }
+    
+    return recipients;
+}
+
+// Display recipients with routing information
+function displayRecipients(recipients) {
+    const container = document.getElementById('recipients-container');
+    const listElement = document.getElementById('recipients-list');
+    
+    container.style.display = 'block';
+    listElement.innerHTML = '';
+    
+    recipients.forEach(recipient => {
+        const card = document.createElement('div');
+        card.className = 'recipient-card';
+        
+        // Determine which payment method will be used
+        const routingDecision = determinePaymentMethod(recipient);
+        
+        if (!routingDecision.canPay) {
+            card.classList.add('skipped');
+        }
+        
+        card.innerHTML = `
+            <div class="recipient-header">
+                <span class="recipient-name">${recipient.name}</span>
+                <span class="recipient-split">${recipient.split}%</span>
+            </div>
+            <div class="payment-methods">
+                ${recipient.methods.keysend ? `
+                    <div class="payment-method ${routingDecision.method === 'keysend' ? 'active' : ''}">
+                        ⚡ Keysend
+                    </div>
+                ` : ''}
+                ${recipient.methods.lnaddress ? `
+                    <div class="payment-method ${routingDecision.method === 'lnaddress' ? 'fallback' : ''}">
+                        @ Lightning Address
+                    </div>
+                ` : ''}
+            </div>
+            ${routingDecision.reason ? `
+                <div style="margin-top: 10px; font-size: 0.85em; color: ${routingDecision.canPay ? 'var(--accent-success)' : 'var(--accent-danger)'};">
+                    ${routingDecision.reason}
+                </div>
+            ` : ''}
+        `;
+        
+        listElement.appendChild(card);
+    });
+}
+
+// Determine which payment method to use for a recipient
+function determinePaymentMethod(recipient) {
+    // Priority: keysend > Lightning address
+    
+    if (recipient.methods.keysend && walletCapabilities.keysend) {
+        return {
+            canPay: true,
+            method: 'keysend',
+            address: recipient.methods.keysend,
+            reason: '✅ Using keysend (preferred method)'
+        };
+    }
+    
+    if (recipient.methods.lnaddress && walletCapabilities.lnaddress) {
+        return {
+            canPay: true,
+            method: 'lnaddress',
+            address: recipient.methods.lnaddress,
+            reason: '⚠️ Using Lightning address (fallback)'
+        };
+    }
+    
+    // No compatible payment method
+    return {
+        canPay: false,
+        method: null,
+        address: null,
+        reason: '❌ No compatible payment method available'
+    };
+}
+
+// Send payments to all recipients (demo version)
+async function sendPayments() {
+    if (!nwcClient || !nwcClient.connected || !currentEpisode) {
+        logMessage('Not ready to send payments', 'error');
+        return;
+    }
+    
+    const totalAmount = 1000; // Total sats to send
+    const recipients = currentEpisode.recipients;
+    
+    logMessage(`Starting payment distribution of ${totalAmount} sats`, 'info');
+    
+    // Reset stats for this payment
+    const sessionStats = {
+        keysend: 0,
+        lnaddress: 0,
+        skipped: 0,
+        totalSats: 0
+    };
+    
+    // Process each recipient
+    for (const recipient of recipients) {
+        const routingDecision = determinePaymentMethod(recipient);
+        const amount = Math.floor((totalAmount * recipient.split) / 100);
+        
+        if (!routingDecision.canPay) {
+            logMessage(`⏭️ Skipping ${recipient.name} - ${routingDecision.reason}`, 'warning');
+            sessionStats.skipped++;
+            continue;
+        }
+        
+        try {
+            logMessage(`💸 Sending ${amount} sats to ${recipient.name} via ${routingDecision.method}`, 'info');
+            
+            // Simulate payment delay
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            
+            if (routingDecision.method === 'keysend') {
+                sessionStats.keysend++;
+                logMessage(`✅ Keysend payment successful to ${recipient.name}`, 'success');
+            } else if (routingDecision.method === 'lnaddress') {
+                sessionStats.lnaddress++;
+                logMessage(`✅ Lightning address payment successful to ${recipient.name}`, 'success');
+            }
+            
+            sessionStats.totalSats += amount;
+            
+        } catch (error) {
+            logMessage(`❌ Payment failed to ${recipient.name}: ${error.message}`, 'error');
+        }
+    }
+    
+    // Update global stats
+    paymentStats.keysend += sessionStats.keysend;
+    paymentStats.lnaddress += sessionStats.lnaddress;
+    paymentStats.skipped += sessionStats.skipped;
+    paymentStats.totalSats += sessionStats.totalSats;
+    
+    // Update stats display
+    updateStatsDisplay();
+    
+    logMessage(`Payment complete! Sent ${sessionStats.totalSats} sats total`, 'success');
+}
+
+// Update stats display
+function updateStatsDisplay() {
+    document.getElementById('payment-stats').style.display = 'grid';
+    document.getElementById('stat-keysend').textContent = paymentStats.keysend;
+    document.getElementById('stat-lnaddress').textContent = paymentStats.lnaddress;
+    document.getElementById('stat-skipped').textContent = paymentStats.skipped;
+    document.getElementById('stat-total').textContent = paymentStats.totalSats;
+}
+
+// Log message to the payment log
+function logMessage(message, type = 'info') {
+    const logCard = document.getElementById('payment-log');
+    const logEntries = document.getElementById('log-entries');
+    
+    logCard.style.display = 'block';
+    
+    const entry = document.createElement('div');
+    entry.className = `log-entry log-${type}`;
+    
+    const timestamp = new Date().toLocaleTimeString();
+    entry.textContent = `[${timestamp}] ${message}`;
+    
+    logEntries.appendChild(entry);
+    
+    // Auto-scroll to bottom
+    const logContainer = logCard.querySelector('.payment-log');
+    logContainer.scrollTop = logContainer.scrollHeight;
+    
+    // Keep only last 50 entries
+    while (logEntries.children.length > 50) {
+        logEntries.removeChild(logEntries.firstChild);
+    }
+}
 // Supports both keysend pubkeys and Lightning addresses per recipient
 
 const DualPaymentHandler = {

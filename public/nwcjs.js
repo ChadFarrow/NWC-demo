@@ -640,73 +640,52 @@ var nwcjs = {
         return events[ 0 ];
     },
     payKeysend: async function( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) {
-        console.log('🔧 Using nwcjs.payKeysend method - FIXED VERSION');
-        console.log('Input destination:', destination, 'Length:', destination?.length);
+        console.log('🔧 Using simplified payKeysend method');
         
-        // Validate and normalize pubkey
-        if (!destination || typeof destination !== 'string') {
-            throw new Error('Invalid destination: must be a non-empty string');
-        }
-        
-        // Remove any whitespace and convert to lowercase
-        destination = destination.trim().toLowerCase();
-        
-        // Check if it's a valid hex string
-        if (!/^[0-9a-f]+$/.test(destination)) {
-            throw new Error('Invalid destination: must be a hex string');
-        }
-        
-        // Ensure proper length (33 bytes = 66 hex chars for compressed pubkey)
-        if (destination.length !== 66) {
-            if (destination.length === 64) {
-                // Add compression prefix if missing
-                destination = '02' + destination;
-                console.log('Added compression prefix, new destination:', destination);
-            } else {
-                throw new Error(`Invalid pubkey length: ${destination.length} (expected 66 characters for compressed pubkey)`);
+        var msg = JSON.stringify({
+            method: "pay_keysend",
+            params: {
+                destination: destination,
+                amount: amount * 1000, // Convert sats to msat
+                message: message || ""
             }
+        });
+        
+        var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
+        var obj = {
+            kind: 23194,
+            content: emsg,
+            tags: [ [ "p", nwc_info[ "wallet_pubkey" ] ] ],
+            created_at: Math.floor( Date.now() / 1000 ),
+            pubkey: nwc_info[ "app_pubkey" ],
         }
+        var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
+        var id = event.id;
+        nwcjs.getResponse( nwc_info, id, "pay_keysend", seconds_of_delay_tolerable );
+        await nwcjs.waitSomeSeconds( 1 );
+        var relay = nwc_info[ "relay" ];
+        nwcjs.sendEvent( event, relay );
         
-        // Validate compression prefix
-        const prefix = destination.substring(0, 2);
-        if (prefix !== '02' && prefix !== '03') {
-            console.warn(`Unusual pubkey prefix: ${prefix} (expected 02 or 03)`);
-        }
-        
-        console.log('Using validated pubkey:', destination);
-        
-        // Use multi_pay_keysend which works better with Alby
-        console.log('Switching to multiPayKeysend for better compatibility...');
-        
-        const keysendArray = [{
-            pubkey: destination,
-            amount: amount * 1000, // Convert sats to msat (standard NWC spec)
-            tlv_records: message ? [{
-                type: 34349334,
-                value: nwcjs.bytesToHex(new TextEncoder().encode(message))
-            }] : []
-        }];
-        
-        console.log('Calling multiPayKeysend with:', keysendArray);
-        
-        try {
-            // Use payKeysend_OLD for single payments instead of multiPayKeysend
-            console.log('🔄 Using payKeysend_OLD for single payment...');
-            const result = await nwcjs.payKeysend_OLD(nwc_info, destination, amount, message, seconds_of_delay_tolerable);
-            console.log('payKeysend_OLD result:', result);
-            
-            if (result && result.result) {
-                console.log('✅ Keysend successful');
-                return result;
-            } else if (result && result.error) {
-                throw new Error(`Keysend failed: ${JSON.stringify(result.error)}`);
-            } else {
-                throw new Error('Keysend failed: No result or error returned');
+        var loop = async () => {
+            await nwcjs.waitSomeSeconds( 1 );
+            if ( !nwcjs.response.length ) return await loop();
+            var one_i_want = null;
+            nwcjs.response.every( ( item, index ) => {
+                if ( item[ "result_type" ] === "pay_keysend" ) {
+                    one_i_want = item;
+                    nwcjs.response.splice( index, 1 );
+                    return;
+                }
+                return true;
+            });
+            if ( one_i_want ) {
+                console.log(`pay_keysend response:`, one_i_want);
+                return one_i_want;
             }
-        } catch (error) {
-            console.error('❌ Keysend error:', error);
-            throw error;
+            return await loop();
         }
+        
+        return await loop();
     },
     payInvoice: async ( nwc_info, invoice, seconds_of_delay_tolerable = 15 ) => {
         console.log('🔧 Using nwcjs.payInvoice method');
@@ -754,161 +733,6 @@ var nwcjs = {
         
         return await loop();
     },
-    // Remember successful format for future payments
-    lastWorkingKeysendFormat: null,
-    
-    payKeysend_OLD: async ( nwc_info, destination, amount, message = '', seconds_of_delay_tolerable = 15 ) => {
-        console.log('🔧 Using nwcjs.payKeysend_OLD method');
-        
-        // Validate destination before creating formats
-        if (!destination || destination.length === 0) {
-            throw new Error('Invalid destination: empty or null destination provided');
-        }
-        
-        // Create all possible destination formats
-        var allFormats = [
-            { name: 'pubkey', value: destination, params: { pubkey: destination } },
-            { name: 'node_id', value: destination, params: { node_id: destination } },
-            { name: 'compressed_pubkey', value: destination.length === 66 ? destination : '02' + destination, params: { pubkey: destination.length === 66 ? destination : '02' + destination } },
-            { name: 'original', value: destination, params: { destination: destination } },
-            { name: 'raw_hex', value: destination.length === 66 ? destination.slice(2) : destination, params: { destination: destination.length === 66 ? destination.slice(2) : destination } },
-            { name: 'uncompressed_pubkey', value: destination.length === 64 ? '02' + destination : destination, params: { destination: destination.length === 64 ? '02' + destination : destination } }
-        ];
-        
-        // If we know a format that worked before, try it first
-        var destinationFormats = [];
-        if (nwcjs.lastWorkingKeysendFormat) {
-            const workingFormat = allFormats.find(f => f.name === nwcjs.lastWorkingKeysendFormat);
-            if (workingFormat) {
-                console.log(`🎯 Trying last working format first: ${nwcjs.lastWorkingKeysendFormat}`);
-                destinationFormats.push(workingFormat);
-                // Add remaining formats
-                destinationFormats.push(...allFormats.filter(f => f.name !== nwcjs.lastWorkingKeysendFormat));
-            } else {
-                destinationFormats = allFormats;
-            }
-        } else {
-            destinationFormats = allFormats;
-        }
-        
-        // Validate all formats have non-empty destinations
-        destinationFormats = destinationFormats.filter(format => {
-            if (!format.value || format.value.length === 0) {
-                console.warn(`❌ Skipping ${format.name} format: empty destination`);
-                return false;
-            }
-            return true;
-        });
-        
-        console.log('Trying keysend with destination formats:', {
-            original_length: destinationFormats[0].value.length,
-            raw_hex_length: destinationFormats[1].value.length,
-            sample: destination.substring(0, 16) + '...',
-            total_formats: destinationFormats.length
-        });
-        
-        // Try each format until one works
-        var formatErrors = [];
-        for (let i = 0; i < destinationFormats.length; i++) {
-            const format = destinationFormats[i];
-            console.log(`Trying format ${i + 1}/${destinationFormats.length}: ${format.name}`);
-            
-            try {
-                var msg = JSON.stringify({
-                    method: "pay_keysend",
-                    params: {
-                        ...format.params,
-                        amount: amount * 1000, // Convert sats to msat (standard NWC spec)
-                        message: message || ""
-                    }
-                });
-                
-                console.log(`📤 Sending ${format.name} format:`, {
-                    method: "pay_keysend",
-                    params: format.params,
-                    amount_msat: amount * 1000,
-                    message: message || ""
-                });
-                
-                var emsg = await nwcjs.encrypt( nwc_info[ "app_privkey" ], nwc_info[ "wallet_pubkey" ], msg );
-                var obj = {
-                    kind: 23194,
-                    content: emsg,
-                    tags: [ [ "p", nwc_info[ "wallet_pubkey" ] ] ],
-                    created_at: Math.floor( Date.now() / 1000 ),
-                    pubkey: nwc_info[ "app_pubkey" ],
-                }
-                var event = await nwcjs.getSignedEvent( obj, nwc_info[ "app_privkey" ] );
-                var id = event.id;
-                nwcjs.getResponse( nwc_info, id, "pay_keysend", seconds_of_delay_tolerable );
-                await nwcjs.waitSomeSeconds( 1 );
-                var relay = nwc_info[ "relay" ];
-                nwcjs.sendEvent( event, relay );
-                
-                var loop = async () => {
-                    await nwcjs.waitSomeSeconds( 1 );
-                    if ( !nwcjs.response.length ) return await loop();
-                    var one_i_want = null;
-                    nwcjs.response.every( ( item, index ) => {
-                        if ( item[ "result_type" ] === "pay_keysend" ) {
-                            one_i_want = item;
-                            nwcjs.response.splice( index, 1 );
-                            return;
-                        }
-                        return true;
-                    });
-                    if ( one_i_want ) {
-                        console.log(`payKeysend response found with format ${format.name}:`, one_i_want);
-                        if (one_i_want.error) {
-                            console.log(`🔍 Error details for format ${format.name}:`, {
-                                error: one_i_want.error,
-                                error_type: typeof one_i_want.error,
-                                error_keys: one_i_want.error ? Object.keys(one_i_want.error) : 'no keys',
-                                format_used: format.name,
-                                destination_value: format.value,
-                                destination_length: format.value.length
-                            });
-                        }
-                        return one_i_want;
-                    }
-                    return await loop();
-                }
-                
-                const result = await loop();
-                if (result && result.error) {
-                    const errorMsg = `Format ${format.name}: ${JSON.stringify(result.error)}`;
-                    console.log(`❌ ${errorMsg}`);
-                    formatErrors.push(errorMsg);
-                    // Continue to next format if this one failed
-                    continue;
-                } else if (result && result.result) {
-                    console.log(`✅ Keysend successful with format: ${format.name}`);
-                    // Remember this format for future payments
-                    nwcjs.lastWorkingKeysendFormat = format.name;
-                    console.log(`💾 Saved working format: ${format.name}`);
-                    return result;
-                } else {
-                    const errorMsg = `Format ${format.name}: Unexpected response format - ${JSON.stringify(result)}`;
-                    console.log(`❌ ${errorMsg}`);
-                    formatErrors.push(errorMsg);
-                    // Continue to next format if this one failed
-                    continue;
-                }
-            } catch (error) {
-                const errorMsg = `Format ${format.name}: ${error.message}`;
-                console.log(`❌ ${errorMsg}`);
-                formatErrors.push(errorMsg);
-                // Continue to next format if this one errored
-                continue;
-            }
-        }
-        
-        // If all formats failed, provide detailed error information
-        const detailedError = formatErrors.length > 0 
-            ? `All keysend destination formats failed:\n${formatErrors.join('\n')}`
-            : 'All keysend destination formats failed - no specific error details available';
-        throw new Error(detailedError);
-    }
 };
 
 // Ensure nwcjs is available globally
@@ -916,18 +740,4 @@ if (typeof window !== 'undefined') {
     window.nwcjs = nwcjs;
 }
 
-console.log('✅ nwcjs object created with functions:', Object.keys(nwcjs));
-console.log('✅ payKeysend function available:', typeof nwcjs.payKeysend);
-console.log('✅ payKeysend_OLD function available:', typeof nwcjs.payKeysend_OLD);
-
-// Test function definition
-try {
-    console.log('✅ Testing payKeysend function call...');
-    if (typeof nwcjs.payKeysend === 'function') {
-        console.log('✅ payKeysend is a function');
-    } else {
-        console.log('❌ payKeysend is not a function, it is:', typeof nwcjs.payKeysend);
-    }
-} catch (e) {
-    console.error('❌ Error testing payKeysend:', e);
-}
+console.log('✅ nwcjs loaded with functions:', Object.keys(nwcjs));

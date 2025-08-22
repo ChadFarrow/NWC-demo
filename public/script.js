@@ -199,14 +199,36 @@ function extractValueBlocks(xmlDoc, episodeLimit = 5) {
         if (recipients.length === 0) recipients = valueBlock.querySelectorAll('valueRecipient');
         if (recipients.length === 0) recipients = valueBlock.querySelectorAll('*[local-name()="valueRecipient"]');
         const lightningAddresses = [], nodePubkeys = [];
+        const recipientMap = {}; // Group recipients by name for dual payment detection
+        
         recipients.forEach(recipient => {
             const type = recipient.getAttribute('type');
             const address = recipient.getAttribute('address');
             const name = recipient.getAttribute('name');
             const split = recipient.getAttribute('split');
-            if (type === 'lnaddress' && address) lightningAddresses.push({ address, name, split });
-            else if (type === 'node' && address) nodePubkeys.push({ address, name, split });
+            
+            // Group by name to detect dual payment options
+            if (!recipientMap[name]) {
+                recipientMap[name] = {
+                    name: name,
+                    split: split,
+                    methods: {}
+                };
+            }
+            
+            if (type === 'lnaddress' && address) {
+                recipientMap[name].methods.lnaddress = address;
+                lightningAddresses.push({ address, name, split });
+            } else if (type === 'node' && address) {
+                recipientMap[name].methods.keysend = address;
+                nodePubkeys.push({ address, name, split });
+            }
         });
+        
+        // Store dual payment info for smart routing
+        const dualPaymentRecipients = Object.values(recipientMap).filter(r => 
+            Object.keys(r.methods).length > 1
+        );
         // Detect <podcast:metaBoost> tag
         let metaBoost = '';
         // Try namespaced and non-namespaced
@@ -252,7 +274,15 @@ function extractValueBlocks(xmlDoc, episodeLimit = 5) {
                 }
             }
             
-            valueBlocks.push({ title, lightningAddresses, nodePubkeys, metaBoost, index: index + 1 });
+            valueBlocks.push({ 
+                title, 
+                lightningAddresses, 
+                nodePubkeys, 
+                metaBoost, 
+                index: index + 1,
+                dualPaymentRecipients: dualPaymentRecipients,
+                recipientMap: recipientMap
+            });
         }
     });
     // Fallback: scan episode text for addresses (respect episode limit)
@@ -493,9 +523,16 @@ function renderValueBlock(block, index) {
             <div style="margin-bottom: 1rem;">
                 <h4 style="color: var(--accent-primary); margin-bottom: 0.5rem;">⚡ Lightning Addresses:</h4>
                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                    ${block.lightningAddresses.map(addr => `
+                    ${block.lightningAddresses.map(addr => {
+                        // Check if this recipient has dual payment options
+                        const hasDualPayment = block.dualPaymentRecipients && 
+                                               block.dualPaymentRecipients.some(r => r.name === addr.name);
+                        const bgColor = hasDualPayment ? 'var(--accent-warning)' : 'var(--accent-primary)';
+                        const dualIndicator = hasDualPayment ? ' 🎯' : '';
+                        
+                        return `
                         <div style="
-                            background: var(--accent-primary);
+                            background: ${bgColor};
                             color: white;
                             padding: 0.5rem;
                             border-radius: 8px;
@@ -505,11 +542,13 @@ function renderValueBlock(block, index) {
                             flex-direction: column;
                             gap: 0.25rem;
                         ">
-                            <div style="font-weight: bold;">${addr.name || 'Lightning Address'}</div>
+                            <div style="font-weight: bold;">${addr.name || 'Lightning Address'}${dualIndicator}</div>
                             <div>${addr.address}</div>
                             ${addr.split ? `<div style=\"font-size: 0.8rem; opacity: 0.8;\">Split: ${addr.split}%</div>` : ''}
+                            ${hasDualPayment ? `<div style=\"font-size: 0.75rem; opacity: 0.9;\">⚠️ Fallback method</div>` : ''}
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
@@ -519,9 +558,16 @@ function renderValueBlock(block, index) {
             <div>
                 <h4 style="color: var(--accent-secondary); margin-bottom: 0.5rem;">🔑 Node Pubkeys:</h4>
                 <div style="display: flex; flex-wrap: wrap; gap: 0.5rem;">
-                    ${block.nodePubkeys.map(pubkey => `
+                    ${block.nodePubkeys.map(pubkey => {
+                        // Check if this recipient has dual payment options
+                        const hasDualPayment = block.dualPaymentRecipients && 
+                                               block.dualPaymentRecipients.some(r => r.name === pubkey.name);
+                        const bgColor = hasDualPayment ? 'var(--accent-success)' : 'var(--accent-secondary)';
+                        const dualIndicator = hasDualPayment ? ' 🎯' : '';
+                        
+                        return `
                         <div style="
-                            background: var(--accent-secondary);
+                            background: ${bgColor};
                             color: white;
                             padding: 0.5rem;
                             border-radius: 8px;
@@ -532,15 +578,33 @@ function renderValueBlock(block, index) {
                             gap: 0.25rem;
                             word-break: break-all;
                         ">
-                            <div style="font-weight: bold;">${pubkey.name || 'Node Pubkey'}</div>
+                            <div style="font-weight: bold;">${pubkey.name || 'Node Pubkey'}${dualIndicator}</div>
                             <a href=\"https://amboss.space/node/${pubkey.address}\" target=\"_blank\" rel=\"noopener noreferrer\" style=\"color: #fff; text-decoration: underline;\">${pubkey.address}</a>
                             ${pubkey.split ? `<div style=\"font-size: 0.8rem; opacity: 0.8;\">Split: ${pubkey.split}%</div>` : ''}
+                            ${hasDualPayment ? `<div style=\"font-size: 0.75rem; opacity: 0.9;\">✅ Preferred method</div>` : ''}
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
     }
+    
+    // Add dual payment legend if there are dual payment recipients
+    if (block.dualPaymentRecipients && block.dualPaymentRecipients.length > 0) {
+        content += `
+            <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-primary); border-radius: 8px; border: 1px solid var(--border-color);">
+                <h4 style="color: var(--text-primary); margin-bottom: 0.5rem;">🎯 Dual Payment Recipients Detected</h4>
+                <div style="font-size: 0.9rem; color: var(--text-secondary); line-height: 1.4;">
+                    This episode supports <strong>smart payment routing</strong> for universal wallet compatibility:
+                    <br>• <span style="color: var(--accent-success);">✅ Keysend</span> - Preferred method for capable wallets (faster)
+                    <br>• <span style="color: var(--accent-warning);">⚠️ Lightning Address</span> - Fallback for wallets without keysend support
+                    <br>• No TSB proxy needed - works with any NWC wallet!
+                </div>
+            </div>
+        `;
+    }
+    
     // Add QR code section
     content += `
         <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
