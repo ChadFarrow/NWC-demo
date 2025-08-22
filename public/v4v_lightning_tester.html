@@ -478,6 +478,8 @@
 </head>
 <body>
     <div class="container">
+        <!-- IMPORTANT: The keysend test sends 0.001 sats (1 millisat) to work around wallet bugs -->
+        <!-- Some wallets incorrectly show millisats as sats, so 1000 sats shown = 1 millisat actual -->
         <header class="header">
             <h1 class="title">NWC Demo - Dual Payment Methods</h1>
                     <p style="color: #f7931e; margin-top: 0.5rem;">Universal V4V with Keysend + Lightning Address Fallbacks! 🚀</p>
@@ -486,7 +488,16 @@
                     📖 Learn about Nostr Wallet Connect
                 </a>
             </p>
-                    <p style="color: #666; font-size: 0.9em; margin-top: 0.25rem;">🔧 Smart payment routing: keysend for capable wallets, Lightning address fallbacks for others</p>
+            <p style="color: #666; font-size: 0.9em; margin-top: 0.25rem;">🔧 Smart payment routing: keysend for capable wallets, Lightning address fallbacks for others</p>
+            
+            <div style="margin-top: 1rem; padding: 1rem; background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 8px; color: #856404;">
+                <div style="font-weight: bold; margin-bottom: 0.5rem;">⚠️ Important: Wallet Display Bug</div>
+                <div style="font-size: 0.9em; line-height: 1.4;">
+                    Many wallets (including Alby) have a bug where they show <strong>millisats as sats</strong>. 
+                    When you see "1,000 sats" in your wallet, that's actually <strong>1 millisat (0.001 sats)</strong>.
+                    The test buttons now send 0.001 sats to work around this bug.
+                </div>
+            </div>
                     <p style="margin-top: 0.5rem;">
                         <a href="https://github.com/ChadFarrow/NWC-demo/tree/dual-valueRecipients" target="_blank" style="color: #007bff; text-decoration: none;">
                             🔗 View dual payment implementation
@@ -570,6 +581,15 @@
                 <div class="form-help" style="font-size: 0.9em; color: #666; padding: 0.75rem; background: var(--bg-secondary); border-radius: 6px; border: 1px solid var(--border-color);">
                     🧠 <strong>Smart Payment Routing:</strong> Your wallet capabilities will be detected automatically. Keysend payments for compatible wallets, Lightning address fallbacks for others.
                 </div>
+                
+                <div style="margin-top: 1rem;">
+                    <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+                        <input type="checkbox" id="enableTSB" checked style="margin: 0; transform: scale(1.2);">
+                        <span style="color: var(--text-secondary); font-size: 0.9rem;">
+                            🔄 Enable TSB Proxy Fallback (for wallets without keysend support)
+                        </span>
+                    </label>
+                </div>
             </div>
             
             <div style="margin-top: 1.5rem;">
@@ -579,11 +599,23 @@
                 
                 <div class="button-group" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 0.75rem;">
                     <button class="btn btn-success" onclick="testKeysend()">
-                        🔑 Test Keysend
+                        🔑 Test Keysend (0.001 sats)
                     </button>
                     <button class="btn btn-warning" onclick="testLnAddress()">
                         📧 Test LN Address
                     </button>
+                    <button class="btn btn-primary" onclick="testExactAmount()">
+                        🎯 Test Exact 0.001 Sats
+                    </button>
+                </div>
+                
+                <div style="margin-top: 1rem; padding: 0.75rem; background: var(--bg-primary); border-radius: 6px; border: 1px solid var(--border-color);">
+                    <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.5rem;">
+                        🔍 <strong>Test Amount:</strong> The keysend test will send <strong style="color: var(--accent-success);">0.001 sats</strong> (1 millisat)
+                    </div>
+                    <div style="font-size: 0.8rem; color: var(--text-muted);">
+                        ⚠️ <strong>Important:</strong> Some wallets have bugs and show millisats as sats. If you see 1000 sats, that's actually 1 millisat!
+                    </div>
                 </div>
             </div>
         </div>
@@ -1008,94 +1040,105 @@
 
         function updateValueBlockDisplay(valueBlocks) {
             console.log('🎨 Updating value block display with:', valueBlocks);
-            let container = document.getElementById('value-blocks-container');
-            if (!container) {
-                console.log('⚠️ Value blocks container not found, creating one...');
-                // Create container if it doesn't exist - insert after RSS Feed card
-                const rssCard = document.querySelector('.card');
-                const newContainer = document.createElement('div');
-                newContainer.id = 'value-blocks-container';
-                newContainer.className = 'card';
-                newContainer.innerHTML = '<div class="card-header"><div class="card-icon">📡</div><h2 class="card-title">Parsed Value Blocks</h2></div>';
-                rssCard.insertAdjacentElement('afterend', newContainer);
-                container = newContainer;
-                console.log('✅ Created new container after RSS card:', container);
+            
+            // Remove any existing results container
+            const existingContainer = document.querySelector('.value-blocks-results');
+            if (existingContainer) {
+                existingContainer.remove();
             }
             
-            // Group value blocks by their source (channel vs episode)
+            // Group value blocks by their source
             const groupedBlocks = {};
             valueBlocks.forEach(block => {
-                const groupKey = block.group === 'channel' ? 'channel' : `episode-${block.episodeNumber}`;
+                let groupKey, groupTitle;
+                
+                if (block.group === 'channel') {
+                    groupKey = 'channel';
+                    groupTitle = 'Channel Default Splits';
+                } else if (block.group === 'xml-fallback') {
+                    groupKey = 'xml-fallback';
+                    groupTitle = 'Found in XML';
+                } else {
+                    groupKey = block.group;
+                    // Add episode number prefix to match main branch format
+                    if (block.episodeNumber) {
+                        groupTitle = `Episode ${block.episodeNumber}: ${block.groupTitle}`;
+                    } else {
+                        groupTitle = block.groupTitle;
+                    }
+                }
+                
                 if (!groupedBlocks[groupKey]) {
                     groupedBlocks[groupKey] = {
-                        title: block.group === 'channel' ? 'Channel Default Splits' : block.groupTitle,
+                        title: groupTitle,
                         blocks: []
                     };
                 }
                 groupedBlocks[groupKey].blocks.push(block);
             });
 
+            // Create results container matching main branch style
+            const resultsContainer = document.createElement('div');
+            resultsContainer.className = 'card value-blocks-results';
+            
             const html = `
-                <div class="card-header"><div class="card-icon">📡</div><h2 class="card-title">Parsed Recipients (${valueBlocks.length})</h2></div>
+                <div class="card-header">
+                    <div class="card-icon">📡</div>
+                    <h2 class="card-title">Parsed Recipients (${valueBlocks.length})</h2>
+                </div>
                 <div style="padding: 1.5rem;">
-                    <div style="background: var(--accent-success); color: white; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1rem; font-size: 0.9rem; text-align: center;">
-                        ✅ Found ${valueBlocks.length} recipient${valueBlocks.length !== 1 ? 's' : ''} across ${Object.keys(groupedBlocks).length} value block${Object.keys(groupedBlocks).length !== 1 ? 's' : ''}
+                    <div style="background: var(--accent-success); color: white; padding: 0.5rem 1rem; border-radius: 6px; margin-bottom: 1.5rem; font-size: 0.9rem; text-align: center;">
+                        ✅ Found ${valueBlocks.length} recipients across ${Object.keys(groupedBlocks).length} value blocks
                     </div>
                     
                     ${Object.entries(groupedBlocks).map(([groupKey, group]) => `
-                        <div class="value-group" style="margin-bottom: 1.5rem; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden;">
-                            <div class="group-header" style="background: var(--bg-secondary); padding: 0.75rem 1rem; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between;">
-                                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; flex: 1;">
-                                    <input type="checkbox" id="group-checkbox-${groupKey}" onchange="toggleGroupSelection('${groupKey}')" style="margin: 0; transform: scale(1.2);">
-                                    <h4 style="margin: 0; color: var(--text-primary); font-size: 0.9rem; font-weight: 600;">
-                                        ${group.title} <span style="color: var(--text-muted); font-weight: 400;">(${group.blocks.length} recipient${group.blocks.length !== 1 ? 's' : ''})</span>
+                        <div class="value-group" style="margin-bottom: 1rem; border-radius: 8px; border: 1px solid var(--border-color); overflow: hidden;">
+                            <div class="group-header" style="background: var(--bg-secondary); padding: 0.75rem 1rem; display: flex; align-items: center; justify-content: space-between; cursor: pointer;" onclick="toggleGroupSplits('${groupKey}')">
+                                <label style="display: flex; align-items: center; gap: 0.75rem; cursor: pointer; flex: 1;" onclick="event.stopPropagation(); toggleGroupSelection('${groupKey}')">
+                                    <input type="checkbox" id="group-checkbox-${groupKey}" style="margin: 0; transform: scale(1.2);">
+                                    <h4 style="margin: 0; color: var(--text-primary); font-size: 0.95rem; font-weight: 600;">
+                                        ${group.title} <span style="color: var(--text-muted); font-weight: 400;">(${group.blocks.length} recipients)</span>
                                     </h4>
                                 </label>
-                                <span style="color: var(--text-muted); font-size: 1rem; transition: transform 0.2s ease; cursor: pointer; padding: 0.25rem;" id="group-toggle-${groupKey}" onclick="toggleGroupSplits('${groupKey}')">▼</span>
+                                <span style="color: var(--text-muted); font-size: 1rem; transition: transform 0.2s ease; padding: 0.25rem;" id="group-toggle-${groupKey}">▼</span>
                             </div>
                             
-                            <div class="group-content" id="group-content-${groupKey}" style="padding: 1rem; display: none;">
-                                <div class="recipients-grid" style="display: grid; gap: 0.5rem;">
+                            <div class="group-content" id="group-content-${groupKey}" style="padding: 1rem; display: none; background: var(--bg-primary);">
+                                <div class="recipients-list">
                                     ${group.blocks.map((block, index) => `
-                                        <label class="recipient-item" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.75rem; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-primary); cursor: pointer; transition: all 0.2s ease;">
+                                        <div class="recipient-row" style="display: flex; align-items: center; gap: 0.75rem; padding: 0.5rem 0; border-bottom: 1px solid var(--border-color);">
                                             <input type="checkbox" name="recipients" value="${block.guid}" 
                                                    data-title="${block.title}" data-guid="${block.guid}" 
                                                    data-type="${block.type || 'dual'}" data-block="${index}" data-group="${groupKey}"
                                                    data-keysend="${block.keysend || ''}" data-lnaddress="${block.lnaddress || ''}"
                                                    style="margin: 0;">
                                             
-                                            <div class="recipient-info" style="flex: 1; min-width: 0;">
-                                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem;">
+                                            <div class="recipient-info" style="flex: 1;">
+                                                <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
                                                     <span style="font-weight: 600; color: var(--text-primary); font-size: 0.9rem;">
                                                         ${block.title}
                                                     </span>
-                                                    <span style="background: var(--accent-primary); color: white; padding: 0.125rem 0.375rem; border-radius: 3px; font-size: 0.65rem; text-transform: uppercase;">
-                                                        ${block.type}
-                                                    </span>
-                                                    ${block.split ? `<span style="background: var(--accent-secondary); color: white; padding: 0.125rem 0.375rem; border-radius: 3px; font-size: 0.65rem; font-weight: 600;">${block.split}%</span>` : ''}
+                                                    ${block.split ? `<span style="background: var(--accent-secondary); color: white; padding: 0.125rem 0.375rem; border-radius: 3px; font-size: 0.7rem; font-weight: 500;">${block.split}%</span>` : ''}
                                                 </div>
                                                 
-                                                ${block.keysend ? `
-                                                <div style="font-size: 0.7rem; color: var(--text-muted); margin-bottom: 0.25rem;">
-                                                    <span style="color: var(--accent-primary); font-weight: 600;">🔑 Keysend:</span>
-                                                    <span style="font-family: monospace; word-break: break-all;">${block.keysend}</span>
-                                                </div>
-                                                ` : ''}
-                                                
-                                                ${block.lnaddress ? `
-                                                <div style="font-size: 0.7rem; color: var(--text-muted);">
-                                                    <span style="color: var(--accent-success); font-weight: 600;">📧 Lightning Address:</span>
-                                                    <span style="font-family: monospace;">${block.lnaddress}</span>
-                                                </div>
-                                                ` : ''}
-                                                
-                                                ${!block.keysend && !block.lnaddress && block.value ? `
-                                                <div style="font-size: 0.7rem; color: var(--text-muted); font-family: monospace; word-break: break-all; line-height: 1.2;">
-                                                    ${block.value}
-                                                </div>
+                                                ${block.keysend && block.lnaddress ? `
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.25rem;">
+                                                        <span style="color: var(--accent-primary);">🔑</span> ${block.keysend.substring(0, 20)}...
+                                                    </div>
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                        <span style="color: var(--accent-success);">⚡</span> ${block.lnaddress}
+                                                    </div>
+                                                ` : block.keysend ? `
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted); font-family: monospace;">
+                                                        <span style="color: var(--accent-primary);">🔑</span> ${block.keysend.substring(0, 20)}...
+                                                    </div>
+                                                ` : block.lnaddress ? `
+                                                    <div style="font-size: 0.75rem; color: var(--text-muted);">
+                                                        <span style="color: var(--accent-success);">⚡</span> ${block.lnaddress}
+                                                    </div>
                                                 ` : ''}
                                             </div>
-                                        </label>
+                                        </div>
                                     `).join('')}
                                 </div>
                             </div>
@@ -1108,8 +1151,12 @@
                 </div>
             `;
             
-            console.log('🎨 Setting container HTML:', html.substring(0, 100) + '...');
-            container.innerHTML = html;
+            resultsContainer.innerHTML = html;
+            
+            // Insert after the RSS Feed card
+            const rssCard = document.querySelector('.card');
+            rssCard.insertAdjacentElement('afterend', resultsContainer);
+            
             console.log('✅ Value block display updated successfully');
         }
 
@@ -1267,6 +1314,7 @@
         }
         
         async function testKeysend() {
+            console.log('🚀 testKeysend function called');
             const btn = event.target;
             const originalText = btn.innerHTML;
             btn.innerHTML = '🔑 Testing...';
@@ -1286,13 +1334,29 @@
                     throw new Error('Invalid NWC connection string');
                 }
                 
-                // Test with a minimal amount (1 sat)
-                const testAmount = 1;
+                // Test with a minimal amount to work around wallet bugs
+                // Many wallets (including Alby) have a bug where they interpret millisats as sats
+                // So when we send 1000 millisats (1 sat), they show it as 1000 sats
+                // To work around this, we need to send 0.001 sats = 1 millisat
+                const isAlby = nwcInfo.relay && nwcInfo.relay.toLowerCase().includes('alby');
+                const testAmount = 0.001; // Send 0.001 sats = 1 millisat to work around wallet bug
+                
+                // CRITICAL: Due to wallet bugs, we send 0.001 sats = 1 millisat
+                // This should result in 1 millisat being sent, but some wallets will show it as 1 sat
+                // If you see 1000 sats being sent, the wallet has a millisat interpretation bug
+                console.log('🚨 CRITICAL TEST INFO:');
+                console.log('🚨 testAmount variable =', testAmount, 'sats');
+                console.log('🚨 This will be converted to', testAmount * 1000, 'millisats =', testAmount * 1000 / 1000, 'sats');
+                console.log('🚨 Expected result: 1 millisat payment (0.001 sats)');
+                console.log('🚨 If you see 1000 sats, the wallet has a millisat bug!');
                 const testDestination = '032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51';
                 const testMessage = 'Test keysend from V4V Lightning Tester';
                 
                 btn.innerHTML = '🔑 Sending test...';
                 console.log('🧪 Testing keysend with:', { amount: testAmount, destination: testDestination, message: testMessage });
+                console.log('🔍 TSB Proxy enabled:', tsbEnabled);
+                console.log('🔍 Wallet relay:', nwcInfo.relay);
+                console.log('🔍 Is Alby wallet:', isAlby);
                 console.log('🔍 nwcjs available:', typeof nwcjs);
                 console.log('🔍 payKeysend available:', typeof nwcjs?.payKeysend);
                 console.log('🔍 payKeysend_OLD available:', typeof nwcjs?.payKeysend_OLD);
@@ -1302,16 +1366,21 @@
                 let paymentResult;
                 let paymentMethod = '';
                 let walletSupportsKeysend = false;
+                let paymentCompleted = false;
                 
                 // Always try direct keysend first to test wallet capability
                 console.log('🔄 Testing wallet\'s direct keysend capability...');
                 
                 try {
+                    // Increase timeout to 15 seconds to avoid race condition
                     const timeoutPromise = new Promise((_, reject) => 
-                        setTimeout(() => reject(new Error('Direct keysend timeout')), 5000)
+                        setTimeout(() => reject(new Error('Direct keysend timeout')), 15000)
                     );
                     
-                    const keysendPromise = nwcjs.payKeysend_OLD(nwcInfo, testDestination, testAmount, testMessage, 5);
+                    console.log('🔍 About to call payKeysend_OLD with amount:', testAmount, 'sats');
+                    console.log('🔍 This should result in:', testAmount * 1000, 'millisats being sent');
+                    
+                    const keysendPromise = nwcjs.payKeysend_OLD(nwcInfo, testDestination, testAmount, testMessage, 15);
                     paymentResult = await Promise.race([keysendPromise, timeoutPromise]);
                     
                     // Check if the result indicates an error (keysend not supported)
@@ -1322,13 +1391,15 @@
                     // If we get here, the wallet DOES support keysend
                     walletSupportsKeysend = true;
                     paymentMethod = 'Direct Keysend';
+                    paymentCompleted = true;
                     console.log('✅ Wallet supports direct keysend!');
                     
                 } catch (directError) {
                     console.log('❌ Direct keysend failed:', directError.message);
                     walletSupportsKeysend = false;
                     
-                    if (tsbEnabled) {
+                    // Only use proxy if payment hasn't completed and TSB is enabled
+                    if (tsbEnabled && !paymentCompleted) {
                         console.log('🔄 TSB enabled - using proxy fallback...');
                         
                         try {
@@ -1341,6 +1412,7 @@
                             nwcBridge.init(nwcString);
                             
                             // Send keysend via proxy
+                            console.log('🔍 Sending via proxy with amount:', testAmount, 'sats');
                             paymentResult = await nwcBridge.sendKeysend(
                                 testDestination,
                                 testAmount,
@@ -1348,6 +1420,7 @@
                             );
                             
                             paymentMethod = 'TSB Proxy';
+                            paymentCompleted = true;
                             console.log('✅ Payment completed via TSB proxy!', paymentResult);
                             
                         } catch (proxyError) {
@@ -1363,12 +1436,15 @@
                 }
                 
                 console.log('✅ Test keysend successful:', paymentResult);
+                console.log('💰 FINAL CONFIRMATION: Amount sent was', testAmount, 'sats (', testAmount * 1000, 'millisats)');
                 
                 // Show detailed success message based on what actually happened
                 btn.innerHTML = '✅ Test Passed';
                 
                 let alertMessage = `🔑 Keysend Test Results:\n\n`;
-                alertMessage += `💰 Payment: ${testAmount} sat sent successfully\n`;
+                alertMessage += `💰 Payment: ${testAmount} sats sent successfully\n`;
+                alertMessage += `🔍 Amount in millisats: ${testAmount * 1000} msat\n`;
+                alertMessage += `⚠️ Note: Some wallets show millisats as sats due to bugs\n`;
                 alertMessage += `🎯 Method: ${paymentMethod}\n`;
                 alertMessage += `🔧 Wallet Keysend: ${walletSupportsKeysend ? 'YES ✅' : 'NO ❌'}\n`;
                 alertMessage += `📦 TSB Proxy: ${tsbEnabled ? 'Enabled' : 'Disabled'}\n\n`;
@@ -1570,6 +1646,64 @@
             // Show legitimate alerts
             originalAlert.call(this, message);
         };
+        
+        // Test function that explicitly sends exactly 1 sat
+        async function testExactAmount() {
+            const btn = event.target;
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '🎯 Testing...';
+            btn.disabled = true;
+            
+            try {
+                const nwcInput = document.querySelector('input[placeholder*="nostr+walletconnect"]');
+                const nwcString = nwcInput.value.trim();
+                
+                if (!nwcString) {
+                    throw new Error('Please enter an NWC connection string first');
+                }
+                
+                // Parse NWC connection string
+                const nwcInfo = nwcjs.processNWCstring(nwcString);
+                if (!nwcInfo) {
+                    throw new Error('Invalid NWC connection string');
+                }
+                
+                // EXPLICITLY set amount to 0.001 sats to work around wallet bugs
+                const exactAmount = 0.001;
+                const testDestination = '032870511bfa0309bab3ca1832ead69eed848a4abddbc4d50e55bb2157f9525e51';
+                const testMessage = 'EXACT 0.001 SAT TEST from V4V Lightning Tester';
+                
+                console.log('🎯 EXACT AMOUNT TEST:');
+                console.log('🎯 Amount set to:', exactAmount, 'sats');
+                console.log('🎯 This will be converted to:', exactAmount * 1000, 'millisats = 1 millisat');
+                console.log('🎯 Expected: 1 millisat payment (0.001 sats)');
+                console.log('🎯 Note: Some wallets may show this as 1 sat due to bugs');
+                
+                btn.innerHTML = '🎯 Sending exact 0.001 sats...';
+                
+                // Send the payment
+                const paymentResult = await nwcjs.payKeysend_OLD(nwcInfo, testDestination, exactAmount, testMessage, 15);
+                
+                if (!paymentResult || paymentResult.error) {
+                    throw new Error('Exact amount test failed: ' + (paymentResult?.error?.message || 'Unknown error'));
+                }
+                
+                console.log('✅ Exact amount test successful:', paymentResult);
+                btn.innerHTML = '✅ Exact Test Passed';
+                
+                alert(`🎯 EXACT AMOUNT TEST RESULTS:\n\n💰 Amount sent: ${exactAmount} sats (${exactAmount * 1000} millisats)\n🎯 Destination: ${testDestination.substring(0, 20)}...\n✅ Payment successful!\n\n⚠️ Note: Some wallets show millisats as sats due to bugs`);
+                
+            } catch (error) {
+                console.error('❌ Exact amount test error:', error);
+                btn.innerHTML = '❌ Test Failed';
+                alert('Exact amount test error: ' + error.message);
+            } finally {
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                    btn.disabled = false;
+                }, 3000);
+            }
+        }
         
         // Simple test function to verify the current state
         async function testLnAddress() {

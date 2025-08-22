@@ -4,58 +4,216 @@
 const DualPaymentHandler = {
     
     /**
-     * Enhanced RSS parsing that groups recipients by name and combines payment methods
+     * Enhanced RSS parsing with comprehensive fallbacks (from main branch) plus dual payment method grouping
      */
-    parseValueBlocksWithFallback: function(xmlDoc) {
+    parseValueBlocksWithFallback: function(xmlDoc, episodeLimit = 10) {
         const recipients = new Map(); // Group by recipient name
         const valueBlocks = [];
         
-        // Parse channel-level value blocks
-        const channelValues = xmlDoc.querySelectorAll('channel > podcast\\:value, channel > value');
+        console.log('🔍 Starting comprehensive dual payment parsing...');
         
-        channelValues.forEach((channelValue, channelIndex) => {
-            const valueRecipients = channelValue.querySelectorAll(':scope > podcast\\:valueRecipient, :scope > valueRecipient');
+        // Helper functions from main branch
+        const extractLightningAddresses = (text) => {
+            const lightningRegex = /([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})/g;
+            return [...new Set(text.match(lightningRegex) || [])];
+        };
+        
+        const extractNodePubkeys = (text) => {
+            const pubkeyRegex = /([0-9a-fA-F]{66})/g;
+            return [...new Set(text.match(pubkeyRegex) || [])];
+        };
+        
+        const addRecipient = (name, type, address, split, group, groupTitle, episodeNumber = null) => {
+            if (!address) return;
             
-            valueRecipients.forEach((recipient, recIndex) => {
-                const name = recipient.getAttribute('name') || `Recipient ${recIndex + 1}`;
-                const type = recipient.getAttribute('type') || 'unknown';
-                const address = recipient.getAttribute('address') || '';
-                const lnaddress = recipient.getAttribute('lnaddress') || ''; // Custom attribute
-                const split = recipient.getAttribute('split') || '';
-                
-                if (!address) return;
-                
-                // Create or update recipient entry
-                const recipientKey = `${name}-${split}`;
-                
-                if (!recipients.has(recipientKey)) {
-                    recipients.set(recipientKey, {
-                        name: name,
-                        split: split,
-                        keysend: null,
-                        lnaddress: null,
-                        group: 'channel',
-                        groupTitle: 'Channel Level'
-                    });
+            // Group by name and split within the same value block (this creates dual recipients!)
+            const recipientKey = `${group}-${name}-${split || 'default'}`;
+            
+            if (!recipients.has(recipientKey)) {
+                recipients.set(recipientKey, {
+                    name: name,
+                    split: split,
+                    keysend: null,
+                    lnaddress: null,
+                    group: group,
+                    groupTitle: groupTitle,
+                    episodeNumber: episodeNumber
+                });
+            }
+            
+            const recipientData = recipients.get(recipientKey);
+            
+            // Assign payment methods based on type (original working logic)
+            if (type === 'node' && address.match(/^[0-9a-fA-F]{66}$/)) {
+                recipientData.keysend = address;
+            } else if (type === 'lnaddress' && address.includes('@')) {
+                recipientData.lnaddress = address;
+            }
+        };
+        
+        // 1. Parse structured podcast:value blocks (comprehensive approach from main branch)
+        console.log('🔍 Step 1: Parsing structured podcast:value blocks...');
+        
+        // Try all selectors for podcast:value elements
+        let valueBlocksElements = xmlDoc.querySelectorAll('podcast\\:value');
+        if (valueBlocksElements.length === 0) valueBlocksElements = xmlDoc.querySelectorAll('value');
+        if (valueBlocksElements.length === 0) {
+            // Manual search for local-name value elements
+            const allElements = xmlDoc.getElementsByTagName('*');
+            const valueElements = [];
+            for (let el of allElements) {
+                if (el.localName === 'value') valueElements.push(el);
+            }
+            valueBlocksElements = valueElements;
+        }
+        
+        console.log(`🔍 Found ${valueBlocksElements.length} structured value blocks`);
+        
+        valueBlocksElements.forEach((valueBlock, index) => {
+            // Try all selectors for valueRecipient elements
+            let recipients_els = valueBlock.querySelectorAll('podcast\\:valueRecipient');
+            if (recipients_els.length === 0) recipients_els = valueBlock.querySelectorAll('valueRecipient');
+            if (recipients_els.length === 0) {
+                // Manual search for local-name valueRecipient elements
+                const allElements = valueBlock.getElementsByTagName('*');
+                const recipientElements = [];
+                for (let el of allElements) {
+                    if (el.localName === 'valueRecipient') recipientElements.push(el);
                 }
-                
-                const recipientData = recipients.get(recipientKey);
-                
-                // Assign payment methods based on type
-                if (type === 'node' && address.match(/^[0-9a-fA-F]{66}$/)) {
-                    recipientData.keysend = address;
-                } else if (type === 'lnaddress' && address.includes('@')) {
-                    recipientData.lnaddress = address;
+                recipients_els = recipientElements;
+            }
+            
+            // Determine if this is channel-level or episode-level
+            let parentItem = valueBlock.closest('item');
+            if (!parentItem) {
+                // Try walking up the DOM tree manually
+                let current = valueBlock.parentElement;
+                while (current && current.tagName !== 'ITEM') {
+                    current = current.parentElement;
                 }
+                parentItem = current;
+            }
+            
+            let group, groupTitle, episodeNumber;
+            if (parentItem) {
+                const titleEl = parentItem.querySelector('title') || (function() {
+                    const titleEls = parentItem.getElementsByTagName('*');
+                    for (let el of titleEls) {
+                        if (el.localName === 'title') return el;
+                    }
+                    return null;
+                })();
+                const title = titleEl ? titleEl.textContent.trim() : `Episode ${index + 1}`;
+                group = `episode-${index}`;
+                groupTitle = title;
+                episodeNumber = index + 1;
+            } else {
+                group = 'channel';
+                groupTitle = 'Channel Level';
+                episodeNumber = null;
+            }
+            
+            recipients_els.forEach(recipient => {
+                const type = recipient.getAttribute('type');
+                const address = recipient.getAttribute('address');
+                const name = recipient.getAttribute('name') || `Recipient ${recipients_els.length}`;
+                const split = recipient.getAttribute('split');
                 
-                // Check for custom lnaddress attribute
-                if (lnaddress && lnaddress.includes('@')) {
-                    recipientData.lnaddress = lnaddress;
-                }
+                addRecipient(name, type, address, split, group, groupTitle, episodeNumber);
             });
         });
         
-        // Convert Map to array format for compatibility
+        // 2. Fallback: Parse episode text for addresses (from main branch approach)
+        console.log('🔍 Step 2: Fallback parsing of episode text...');
+        
+        const items = Array.from(xmlDoc.querySelectorAll('channel > item'));
+        const itemsToProcess = episodeLimit > 0 ? items.slice(0, episodeLimit) : items;
+        
+        console.log(`🔍 Processing ${itemsToProcess.length} episodes for text extraction`);
+        
+        itemsToProcess.forEach((item, index) => {
+            const titleEl = item.querySelector('title') || (function() {
+                const titleEls = item.getElementsByTagName('*');
+                for (let el of titleEls) {
+                    if (el.localName === 'title') return el;
+                }
+                return null;
+            })();
+            const title = titleEl ? titleEl.textContent.trim() : `Episode ${index + 1}`;
+            const description = item.querySelector('description')?.textContent || '';
+            const content = item.querySelector('content\\:encoded')?.textContent || 
+                           (function() {
+                               const encodedEls = item.getElementsByTagName('*');
+                               for (let el of encodedEls) {
+                                   if (el.localName === 'encoded') return el.textContent;
+                               }
+                               return '';
+                           })() || '';
+            
+            const fullText = `${title} ${description} ${content}`;
+            const textLightningAddresses = extractLightningAddresses(fullText);
+            const textNodePubkeys = extractNodePubkeys(fullText);
+            
+            // Add found addresses as recipients
+            textLightningAddresses.forEach((addr, addrIndex) => {
+                addRecipient(
+                    `Lightning Address ${addrIndex + 1}`, 
+                    'lnaddress', 
+                    addr, 
+                    '', 
+                    `episode-${index}`, 
+                    title, 
+                    index + 1
+                );
+            });
+            
+            textNodePubkeys.forEach((pubkey, pubkeyIndex) => {
+                addRecipient(
+                    `Node Pubkey ${pubkeyIndex + 1}`, 
+                    'node', 
+                    pubkey, 
+                    '', 
+                    `episode-${index}`, 
+                    title, 
+                    index + 1
+                );
+            });
+        });
+        
+        // 3. Final fallback: Scan entire XML text (from main branch)
+        if (recipients.size === 0) {
+            console.log('🔍 Step 3: Final fallback - scanning entire XML...');
+            
+            const xmlText = xmlDoc.documentElement.outerHTML;
+            const lightningAddresses = extractLightningAddresses(xmlText);
+            const nodePubkeys = extractNodePubkeys(xmlText);
+            
+            lightningAddresses.forEach((addr, index) => {
+                addRecipient(
+                    `Lightning Address ${index + 1}`, 
+                    'lnaddress', 
+                    addr, 
+                    '', 
+                    'xml-fallback', 
+                    'Found in XML', 
+                    null
+                );
+            });
+            
+            nodePubkeys.forEach((pubkey, index) => {
+                addRecipient(
+                    `Node Pubkey ${index + 1}`, 
+                    'node', 
+                    pubkey, 
+                    '', 
+                    'xml-fallback', 
+                    'Found in XML', 
+                    null
+                );
+            });
+        }
+        
+        // Convert Map to array format with dual payment structure
         recipients.forEach((recipientData, key) => {
             valueBlocks.push({
                 title: recipientData.name,
@@ -64,11 +222,19 @@ const DualPaymentHandler = {
                 split: recipientData.split,
                 group: recipientData.group,
                 groupTitle: recipientData.groupTitle,
+                episodeNumber: recipientData.episodeNumber,
                 guid: `dual-${key}`,
                 type: 'dual', // New type for dual payment recipients
                 description: `${recipientData.name} - Keysend: ${recipientData.keysend ? 'Yes' : 'No'}, LN Address: ${recipientData.lnaddress ? 'Yes' : 'No'}`
             });
         });
+        
+        console.log(`✅ Comprehensive parsing complete: ${valueBlocks.length} recipients found`);
+        console.log(`🔍 Recipients by group:`, [...recipients.keys()].reduce((acc, key) => {
+            const group = recipients.get(key).group;
+            acc[group] = (acc[group] || 0) + 1;
+            return acc;
+        }, {}));
         
         return valueBlocks;
     },
@@ -127,14 +293,13 @@ const DualPaymentHandler = {
     },
     
     /**
-     * Smart payment routing based on wallet capabilities
+     * Smart payment routing based on wallet capabilities (original working logic)
      */
     routePayment: function(recipient, walletCapabilities) {
         const { keysend, invoice, walletType } = walletCapabilities;
         
-        // Priority routing logic
+        // Priority routing logic: keysend first (if wallet supports and recipient has it)
         if (keysend && recipient.keysend) {
-            // Wallet supports keysend and recipient has keysend address
             return {
                 method: 'keysend',
                 address: recipient.keysend,

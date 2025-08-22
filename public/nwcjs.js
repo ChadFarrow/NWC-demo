@@ -680,7 +680,7 @@ var nwcjs = {
         
         const keysendArray = [{
             pubkey: destination,
-            amount: amount * 1000, // Convert sats to msat
+            amount: amount * 1000, // Convert sats to msat (standard NWC spec)
             tlv_records: message ? [{
                 type: 34349334,
                 value: nwcjs.bytesToHex(new TextEncoder().encode(message))
@@ -818,7 +818,7 @@ var nwcjs = {
                     method: "pay_keysend",
                     params: {
                         ...format.params,
-                        amount: amount * 1000, // Convert sats to msat
+                        amount: amount * 1000, // Convert sats to msat (standard NWC spec)
                         message: message || ""
                     }
                 });
