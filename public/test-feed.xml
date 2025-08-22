@@ -1,63 +1,102 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:content="http://purl.org/rss/1.0/modules/content/" xmlns:podcast="https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md">
   <channel>
-    <title>V4V Lightning Test Feed</title>
-    <description>Test feed with Lightning addresses and node pubkeys</description>
+    <title>V4V Lightning Test Feed - Dual Payment Methods</title>
+    <description>Test feed demonstrating dual payment methods: keysend + Lightning address fallbacks</description>
     <link>https://example.com</link>
     
-    <!-- Add metaBoost endpoint for the channel -->
+    <!-- Channel-level value block with dual payment methods -->
     <podcast:value type="lightning" method="keysend">
-      <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
+      
+      <!-- Host 1 - Keysend preferred, Lightning address fallback -->
+      <podcast:valueRecipient 
+        name="Alice Host" 
+        type="node" 
+        address="02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619" 
+        split="40" />
+      <podcast:valueRecipient 
+        name="Alice Host" 
+        type="lnaddress" 
+        address="chad@getalby.com" 
+        split="40" />
+      
+      <!-- Host 2 - Keysend preferred, Lightning address fallback -->
+      <podcast:valueRecipient 
+        name="Bob Host" 
+        type="node" 
+        address="03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7" 
+        split="40" />
+      <podcast:valueRecipient 
+        name="Bob Host" 
+        type="lnaddress" 
+        address="bob@getalby.com" 
+        split="40" />
+      
+      <!-- Producer - Lightning address only -->
+      <podcast:valueRecipient 
+        name="Producer Carol" 
+        type="lnaddress" 
+        address="carol@walletofsatoshi.com" 
+        split="15" />
+      
+      <!-- Podcast Index - Keysend only (no fallback) -->
+      <podcast:valueRecipient 
+        name="Podcast Index" 
+        type="node" 
+        address="02d5c1bf8b940dc9cadca86d1b0a3c37fbe39cee4c7e839e33bef9174531d27f52" 
+        split="5" />
     </podcast:value>
     
     <item>
-      <title>Episode 1: Lightning Network Basics</title>
-      <description>Learn about Lightning Network and how to send payments to chad@getalby.com and alice@walletofsatoshi.com</description>
+      <title>Episode 1: Dual Payment Methods Demo</title>
+      <description>Demonstrating how keysend and Lightning address fallbacks work for universal wallet compatibility</description>
       <content:encoded>
         <![CDATA[
-          <p>In this episode, we discuss Lightning Network basics and how to send payments to various Lightning addresses.</p>
-          <p>Lightning addresses: chad@getalby.com, alice@walletofsatoshi.com</p>
-          <p>Node pubkey: 02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619</p>
+          <p>This episode shows how podcasters can provide both keysend pubkeys and Lightning addresses for the same recipient.</p>
+          <p>Keysend-capable wallets (Alby Hub, LND) will use the faster keysend method.</p>
+          <p>Wallets without keysend support (Primal, Coinos) will automatically fall back to Lightning addresses.</p>
+          <p>No TSB proxy needed - universal compatibility through smart routing!</p>
         ]]>
       </content:encoded>
       
-      <!-- Add metaBoost endpoint for this episode -->
-      <podcast:value type="lightning" method="keysend">
-        <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
-      </podcast:value>
+      <!-- Episode uses channel-level value block by default -->
     </item>
     
     <item>
-      <title>Episode 2: Value for Value Podcasting</title>
-      <description>Exploring V4V podcasting with Lightning payments to bob@coinos.io and carol@zebedee.io</description>
+      <title>Episode 2: Guest Episode with Special Splits</title>
+      <description>Special episode featuring a guest with modified payment splits</description>
       <content:encoded>
         <![CDATA[
-          <p>This episode covers Value for Value podcasting and how creators can monetize their content.</p>
-          <p>Lightning addresses: bob@coinos.io, carol@zebedee.io</p>
-          <p>Node pubkeys: 03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47f24772, 02f7025d96b5c63e71869f23c96d151c3dd6d8b1c8b1c8b1c8b1c8b1c8b1c8b1c8</p>
+          <p>This episode features a special guest, so we've adjusted our value splits to include them.</p>
+          <p>This demonstrates how episode-level value blocks can override channel defaults.</p>
+          <p>The guest only has a Lightning address, showing mixed payment method compatibility.</p>
         ]]>
       </content:encoded>
       
-      <!-- Add metaBoost endpoint for this episode -->
+      <!-- Episode-specific value block with guest -->
       <podcast:value type="lightning" method="keysend">
-        <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
-      </podcast:value>
-    </item>
-    
-    <item>
-      <title>Episode 3: Bitcoin and Lightning Development</title>
-      <description>Technical deep dive into Bitcoin development with payments to dev@lightning.network</description>
-      <content:encoded>
-        <![CDATA[
-          <p>Technical discussion about Bitcoin and Lightning Network development.</p>
-          <p>Lightning address: dev@lightning.network</p>
-          <p>Node pubkey: 02a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47f24773</p>
-        ]]>
-      </content:encoded>
-      
-      <!-- Add metaBoost endpoint for this episode -->
-      <podcast:value type="lightning" method="keysend">
-        <podcast:metaBoost>https://v4v-lightning-payment-tester-o9dcyzifv-chadfs-projects.vercel.app/api/metaboost</podcast:metaBoost>
+        <!-- Hosts get reduced splits to make room for guest -->
+        <podcast:valueRecipient name="Alice Host" type="node" 
+          address="02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619" split="30" />
+        <podcast:valueRecipient name="Alice Host" type="lnaddress" 
+          address="chad@getalby.com" split="30" />
+        
+        <podcast:valueRecipient name="Bob Host" type="node" 
+          address="03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7" split="30" />
+        <podcast:valueRecipient name="Bob Host" type="lnaddress" 
+          address="bob@getalby.com" split="30" />
+        
+        <!-- Guest on this episode - Lightning address only -->
+        <podcast:valueRecipient name="Guest David" type="lnaddress" 
+          address="david@coinos.io" split="25" />
+        
+        <!-- Producer keeps reduced split -->
+        <podcast:valueRecipient name="Producer Carol" type="lnaddress" 
+          address="carol@walletofsatoshi.com" split="10" />
+        
+        <!-- Podcast Index keeps their split -->
+        <podcast:valueRecipient name="Podcast Index" type="node" 
+          address="02d5c1bf8b940dc9cadca86d1b0a3c37fbe39cee4c7e839e33bef9174531d27f52" split="5" />
       </podcast:value>
     </item>
   </channel>

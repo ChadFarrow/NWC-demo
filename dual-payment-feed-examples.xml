@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:podcast="https://github.com/Podcastindex-org/podcast-namespace/blob/main/docs/1.0.md">
+  <channel>
+    <title>Dual Payment Method Podcast</title>
+    <description>Example feed showing dual payment methods for value4value</description>
+    <link>https://example.com</link>
+    
+    <!-- APPROACH 1: Multiple Recipients with Same Name/Split (Recommended) -->
+    <podcast:value type="lightning" method="keysend">
+      
+      <!-- Host Alice - Prefers keysend, provides Lightning address for compatibility -->
+      <podcast:valueRecipient 
+        name="Alice Host" 
+        type="node" 
+        address="02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619" 
+        split="45" />
+      <podcast:valueRecipient 
+        name="Alice Host" 
+        type="lnaddress" 
+        address="alice@getalby.com" 
+        split="45" />
+      
+      <!-- Host Bob - Prefers keysend, provides Lightning address for compatibility -->
+      <podcast:valueRecipient 
+        name="Bob Host" 
+        type="node" 
+        address="03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7" 
+        split="45" />
+      <podcast:valueRecipient 
+        name="Bob Host" 
+        type="lnaddress" 
+        address="bob@getalby.com" 
+        split="45" />
+      
+      <!-- Producer - Only has Lightning address -->
+      <podcast:valueRecipient 
+        name="Producer Carol" 
+        type="lnaddress" 
+        address="carol@walletofsatoshi.com" 
+        split="5" />
+      
+      <!-- Podcast Index - Keysend only (no fallback needed) -->
+      <podcast:valueRecipient 
+        name="Podcast Index" 
+        type="node" 
+        address="02d5c1bf8b940dc9cadca86d1b0a3c37fbe39cee4c7e839e33bef9174531d27f52" 
+        split="5" />
+    </podcast:value>
+    
+    <item>
+      <title>Episode 1: Getting Started with Dual Payments</title>
+      <description>Learn how podcasters can provide both keysend and Lightning address options</description>
+      
+      <!-- Episode-specific value block with guest split -->
+      <podcast:value type="lightning" method="keysend">
+        
+        <!-- Hosts get reduced split to make room for guest -->
+        <podcast:valueRecipient 
+          name="Alice Host" 
+          type="node" 
+          address="02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619" 
+          split="35" />
+        <podcast:valueRecipient 
+          name="Alice Host" 
+          type="lnaddress" 
+          address="alice@getalby.com" 
+          split="35" />
+        
+        <podcast:valueRecipient 
+          name="Bob Host" 
+          type="node" 
+          address="03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7" 
+          split="35" />
+        <podcast:valueRecipient 
+          name="Bob Host" 
+          type="lnaddress" 
+          address="bob@getalby.com" 
+          split="35" />
+        
+        <!-- Guest on this episode -->
+        <podcast:valueRecipient 
+          name="Guest David" 
+          type="lnaddress" 
+          address="david@coinos.io" 
+          split="20" />
+        
+        <!-- Producer and index keep their splits -->
+        <podcast:valueRecipient 
+          name="Producer Carol" 
+          type="lnaddress" 
+          address="carol@walletofsatoshi.com" 
+          split="5" />
+        
+        <podcast:valueRecipient 
+          name="Podcast Index" 
+          type="node" 
+          address="02d5c1bf8b940dc9cadca86d1b0a3c37fbe39cee4c7e839e33bef9174531d27f52" 
+          split="5" />
+      </podcast:value>
+    </item>
+    
+    <item>
+      <title>Episode 2: Advanced Payment Routing</title>
+      <description>Deep dive into wallet compatibility and payment routing strategies</description>
+      
+      <!-- Back to standard channel splits -->
+      <!-- No episode-specific value block means channel-level splits apply -->
+    </item>
+  </channel>
+</rss>
+
+
+<!-- APPROACH 2: Custom Attribute Extension (Future Specification) -->
+<!--
+This approach would require an update to the Podcastindex specification
+to support an 'lnaddress' attribute on valueRecipient elements
+
+<podcast:value type="lightning" method="keysend">
+  <podcast:valueRecipient 
+    name="Alice Host" 
+    type="node" 
+    address="02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619"
+    lnaddress="alice@getalby.com"
+    split="45" />
+  
+  <podcast:valueRecipient 
+    name="Bob Host" 
+    type="node" 
+    address="03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7"
+    lnaddress="bob@getalby.com" 
+    split="45" />
+    
+  <podcast:valueRecipient 
+    name="Producer Carol" 
+    type="lnaddress" 
+    address="carol@walletofsatoshi.com" 
+    split="5" />
+    
+  <podcast:valueRecipient 
+    name="Podcast Index" 
+    type="node" 
+    address="02d5c1bf8b940dc9cadca86d1b0a3c37fbe39cee4c7e839e33bef9174531d27f52" 
+    split="5" />
+</podcast:value>
+-->
+
+
+<!-- 
+PAYMENT ROUTING LOGIC:
+
+1. Alby Hub / LND wallets (support keysend):
+   - Alice Host: pays 02eec7245d6b7d2ccb30380bfbe2a3648cd7a942653f5aa340edcea1f283686619 (keysend)
+   - Bob Host: pays 03a0434d9e47f3c86235477c7b1ae6ae5d3442d49b1943c2b752a68e2a47e247c7 (keysend)
+   - Producer Carol: pays carol@walletofsatoshi.com (Lightning address)
+   - Podcast Index: pays 02d5c1bf8b940dc9cadca86d1b0a3c37fbe39cee4c7e839e33bef9174531d27f52 (keysend)
+
+2. Primal / Coinos wallets (no keysend support):
+   - Alice Host: pays alice@getalby.com (Lightning address fallback)
+   - Bob Host: pays bob@getalby.com (Lightning address fallback) 
+   - Producer Carol: pays carol@walletofsatoshi.com (Lightning address)
+   - Podcast Index: SKIPPED (no Lightning address fallback provided)
+
+3. Benefits:
+   - Keysend-capable wallets use preferred method (lower fees, faster)
+   - Non-keysend wallets can still participate in value4value
+   - Podcasters control which recipients get fallback options
+   - No dependency on proxy services like TSB
+   - Clean, standards-compliant RSS implementation
+-->
