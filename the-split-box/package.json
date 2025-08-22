@@ -1,0 +1,22 @@
+{
+  "name": "the-split-box",
+  "version": "1.0.0",
+  "description": "Keysend proxy server using NWC - routes regular Lightning payments as keysend",
+  "main": "server-v2.js",
+  "scripts": {
+    "start": "node server-v2.js",
+    "dev": "nodemon server-v2.js",
+    "dev:v1": "nodemon server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "cors": "^2.8.5",
+    "ws": "^8.13.0",
+    "bech32": "^2.0.0",
+    "secp256k1": "^5.0.0",
+    "dotenv": "^16.0.3"
+  },
+  "devDependencies": {
+    "nodemon": "^2.0.22"
+  }
+}

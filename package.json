@@ -4,19 +4,26 @@
   "description": "A demo application showcasing Nostr Wallet Connect (NWC) integration with Lightning Network payments",
   "main": "public/v4v_lightning_tester.html",
   "engines": {
-    "node": "22.x"
+    "node": "18.x"
   },
   "scripts": {
-    "build": "echo 'Static build completed'",
-    "start": "node proxy.js",
-    "dev": "node proxy.js",
+    "build": "echo 'Build completed'",
+    "start": "node server.js",
+    "dev": "node server.js", 
+    "start:proxy": "node proxy.js",
     "vercel-build": "echo 'Vercel build completed'"
   },
   "dependencies": {
+    "@getalby/sdk": "^6.0.0",
+    "bech32": "^2.0.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "express": "^4.18.2",
     "node-fetch": "^2.6.7",
-    "nostr-tools": "^2.15.0"
+    "nostr-tools": "^2.15.0",
+    "secp256k1": "^5.0.1",
+    "websocket-polyfill": "^0.0.3",
+    "ws": "^8.18.3"
   },
   "keywords": [
     "lightning",
